@@ -1,0 +1,24 @@
+{
+  "name": "discordbotfordnd",
+  "version": "1.0.0",
+  "description": "A simple discord bot for D&amp;D.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AilujTU/DiscordBotForDnD.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/AilujTU/DiscordBotForDnD/issues"
+  },
+  "homepage": "https://github.com/AilujTU/DiscordBotForDnD#readme",
+  "dependencies": {
+    "discord.js": "^14.26.4"
+  }
+}

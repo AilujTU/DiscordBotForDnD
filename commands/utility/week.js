@@ -11,7 +11,7 @@ module.exports = {
         await interaction.deferReply();
 
         const lastUser = interaction.options.getMember('last');
-        const last = lastUser ? await interaction.guild.members.fetch(lastUser.id) : null;
+        const last = lastUser && !lastUser.user.bot ? await interaction.guild.members.fetch(lastUser.id) : null;
 
         await interaction.guild.members.fetch();
         const members = interaction.guild.members.cache;

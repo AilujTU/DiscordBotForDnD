@@ -1,7 +1,9 @@
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+const crypto = require('crypto');
+
+function rollDice(max) {
+    return crypto.randomInt(1,max+1);
 }
 
 module.exports = {
-    randomInt,
+    rollDice,
 };

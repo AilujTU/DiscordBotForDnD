@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const colors = require('../../utils/colors');
+const {colors} = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder().setName('server').setDescription('Provides information about the server.'),
@@ -12,27 +12,27 @@ module.exports = {
                 {
                     name: 'Server Name',
                     value: guild.name,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Member Count',
                     value: `${guild.memberCount}`,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Server ID',
                     value: guild.id,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Owner',
                     value: `@${guild.ownerId}`,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Created',
                     value: `<t:${parseInt(guild.createdTimestamp / 1000)}:R>`,
-                    inline: true,
+                    inline: false,
                 },
             )
             .setFooter({

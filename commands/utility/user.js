@@ -15,22 +15,22 @@ module.exports = {
                 {
                     name: 'User name',
                     value: user.tag,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'User ID',
                     value: user.id,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Account Created',
                     value: `<t:${parseInt(user.createdTimestamp / 1000)}:R>`,
-                    inline: true,
+                    inline: false,
                 },
                 {
                     name: 'Joined Server',
                     value: `<t:${parseInt(member.joinedTimestamp / 1000)}:R>`,
-                    inline: true,
+                    inline: false,
                 },
             )
             .setFooter({

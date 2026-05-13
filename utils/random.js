@@ -1,7 +1,22 @@
 const crypto = require('crypto');
 
-function rollDice(max) {
-    return crypto.randomInt(1,max+1);
+function rollDice(max, option = {}) {
+    const {
+        mod = 0,
+    } = option;
+
+    const roll = crypto.randomInt(1,max+1);
+    const total = roll + mod;
+
+
+    return {
+        max,
+        roll,
+        mod,
+        total,
+        crit: roll == max,
+        fail: roll == 1,
+    };
 }
 
 function randomInt(min,max) {

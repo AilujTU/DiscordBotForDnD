@@ -8,16 +8,13 @@ module.exports = {
         .setDescription('Rolls a d8, optionally with a modifier.')
         .addNumberOption((option) => option.setName('mod').setDescription('The modifier to add to the result.')),
     async execute(interaction) {
-        const roll = rollDice(8);
-        const isCrit = (roll == 8);
-        const mod = interaction.options.getNumber('mod') ?? 0;
-        const result = roll+mod;
-        const msg = mod == 0 ? `**You rolled:** \`${result}\`` : `**You rolled:** \`${roll}\` **+** \`${mod}\` **=** \`${result}\``;
-        
 
+        const result = rollDice(8,{mod: interaction.options.getNumber('mod') ?? 0});
+        const msg = result.mod == 0 ? `**You rolled:** \`${result.total}\`` : `**You rolled:** \`${result.roll}\` **+** \`${result.mod}\` **=** \`${result.total}\``;
+        
         const embed = new EmbedBuilder()
-            .setColor(isCrit? colors.crit : colors.roll)
-            .setTitle(isCrit? 'CRITICAL :boom:' :'D8 Roll :game_die:')
+            .setColor(result.crit? colors.crit : colors.roll)
+            .setTitle(result.crit? 'CRITICAL :boom:' :'D8 Roll :game_die:')
             .setDescription(msg)
             .setFooter({
                 text: `Rolled by ${interaction.member?.displayName || interaction.user.username}`,

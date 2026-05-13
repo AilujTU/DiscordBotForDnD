@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { rollDice } = require('../../utils/random');
-const { createMessageForRolls } = require('../../utils/messageTemplates');
-const colors = require('../../utils/colors');
+const {rollDice, createMessageForRolls, colors} = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()

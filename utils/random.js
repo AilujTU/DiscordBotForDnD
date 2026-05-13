@@ -1,21 +1,30 @@
 const crypto = require('crypto');
 
 function rollDice(max, option = {}) {
-    const {
-        mod = 0,
-    } = option;
+    const { mod, type } = option;
 
-    const roll = crypto.randomInt(1,max+1);
-    const total = roll + mod;
+    const first = crypto.randomInt(1,max+1);
+    let chosen = first;
+    let second = null;
 
+    if (type != 'normal') {
+        second = crypto.randomInt(1,max+1);
+        chosen = type == 'advantage'? Math.max(first, second): Math.min(first, second);
+    }
+
+    const total = chosen+mod;
 
     return {
         max,
-        roll,
+        first,
+        second,
+        chosen,
         mod,
         total,
-        crit: roll == max,
-        fail: roll == 1,
+        advantage: type == 'advantage',
+        disadvantage: type == 'disadvantage',
+        crit: chosen == max,
+        fail: chosen == 1,
     };
 }
 

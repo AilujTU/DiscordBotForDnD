@@ -12,9 +12,9 @@ function buildCombatEmbed(combat, combatants, currentTurnIndex, round, color, ti
                     ? ':point_right:'
                     : ':small_blue_diamond:';
 
-                const type = c.is_player ? ':mage:' : ':zombie:';
+                const type = c.is_player ? ':green_square: ' : ':red_square:';
 
-                return `${marker} ${type} **${c.name}** (\`${c.initiative}\`)`;
+                return `${marker} **${c.name}** ${type} (\`${c.initiative}\`)`;
             })
             .join('\n\n')
         : '*No combatants added yet.*';

@@ -27,3 +27,6 @@ replay_pid*
 node_modules
 .env
 config.json
+database.sqlite
+*.sqlite
+*.sqlite3

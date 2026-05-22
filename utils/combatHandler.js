@@ -1,6 +1,7 @@
 const db = require('../db/knex');
 const { EmbedBuilder, MessageFlags, flatten } = require('discord.js');
 const colors = require('./colors');
+const { rollDice } = require('./random');
 
 function buildCombatEmbed(combat, combatants, currentTurnIndex, round, color, title = 'Combat Tracker') {
     const current = combatants[currentTurnIndex] ?? null;
@@ -168,13 +169,13 @@ async function handleCombatAdd(interaction) {
     }
 
     const name = interaction.options.getString('name');
-    const initiative = interaction.options.getInteger('initiative');
+    const mod = interaction.options.getInteger('mod');
     const isPlayer = interaction.options.getBoolean('is_player') ?? false;
 
     await db('combatant').insert({
         combat_id: combat.id,
         name,
-        initiative,
+        initiative: rollDice(20,{mod: mod}).total,
         is_player: isPlayer
     });
 
@@ -196,7 +197,7 @@ async function handleCombatAdd(interaction) {
 
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({
-                content: `Added **${name}** to combat`,
+                content: `Added **${name}** to combat.`,
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -339,10 +340,89 @@ async function handleCombatEnd(interaction) {
     }
 }
 
+async function handleCombatMonsterCreation(interaction) {
+    const combat = await db('combat')
+        .where({
+            guild_id: interaction.guild.id,
+            channel_id: interaction.channel.id,
+            active: true,
+        }).first();
+
+    if (!combat) {
+        return interaction.reply({
+            content: 'No active combat in this channel.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    const monstersToAdd = buildMonsters(interaction,combat.id);
+
+    await db('combatant').insert(monstersToAdd);
+
+    const combatants = await db('combatant')
+        .where({ combat_id: combat.id })
+        .orderBy([
+            { column: 'initiative', order: 'desc' },
+            { column: 'id', order: 'asc' }
+        ]);
+
+    const embed = buildCombatEmbed(combat, combatants, combat.turn, combat.rounds, colors.combat_active);
+
+    try {
+        const msg = await fetchCombatMessage(interaction, combat);
+
+        await msg.edit({
+            embeds: [embed]
+        });
+
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+                content: `Added **${interaction.options.getString('name')}** to combat.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        return interaction.reply({
+            content: 'Couldn\'t update the combat message.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+}
+
+function buildMonsters(interaction, combat_id) {
+    const name = interaction.options.getString('name');
+    const amount = interaction.options.getInteger('amount') ?? 1;
+    const init = interaction.options.getInteger('mod');
+
+    if (amount == 1) {
+        return [{
+            combat_id: combat_id,
+            name: name,
+            initiative: rollDice(20, { mod: init }).total,
+            is_player: false
+        }]
+    }
+
+    let monsters = [];
+
+    for (let i = 1; i < amount + 1; i++) {
+        monsters.push({
+            combat_id: combat_id,
+            name: `${name} ${i}`,
+            initiative: rollDice(20, { mod: init }).total,
+            is_player: false
+        });
+    }
+
+    return monsters;
+}
+
 module.exports = {
     handleCombatBegin,
     handleCombatNext,
     handleCombatAdd,
     handleCombatRemove,
+    handleCombatMonsterCreation,
     handleCombatEnd,
 }

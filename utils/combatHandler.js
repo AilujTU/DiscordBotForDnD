@@ -209,7 +209,6 @@ async function handleCombatAdd(interaction) {
     }
 }
 
-//FIXME: not working, fix
 async function handleCombatRemove(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -344,5 +343,6 @@ module.exports = {
     handleCombatBegin,
     handleCombatNext,
     handleCombatAdd,
-    handleCombatEnd
+    handleCombatRemove,
+    handleCombatEnd,
 }

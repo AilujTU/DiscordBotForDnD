@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const {handleCombatBegin, handleCombatNext, handleCombatAdd, handleCombatEnd, rollDice, createMessageForRolls, colors} = require('../../utils');
+const {handleCombatBegin, handleCombatNext, handleCombatAdd, handleCombatEnd, rollDice, createMessageForRolls, colors, handleCombatRemove} = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -32,7 +32,7 @@ module.exports = {
             )
         )
         .addSubcommand(sub => 
-            sub.setName('remove').setDescription('Removes a combatant')
+            sub.setName('remove').setDescription('Removes a combatant.')
                 .addStringOption(option => 
                     option
                         .setName('name')
@@ -51,6 +51,8 @@ module.exports = {
                 return handleCombatNext(interaction);
             case 'add':
                 return handleCombatAdd(interaction);
+            case 'remove':
+                return handleCombatRemove(interaction);
             case 'end':
                 return handleCombatEnd(interaction);
         }

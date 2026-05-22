@@ -1,9 +1,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const {Client,Collection, Events, GatewayIntentBits, MessageFlags} = require('discord.js');
-const {token} = require('./config.json');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
+const { token } = require('./config.json');
+const db = require('./db/knex');
 
-const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers,]});
+const client = new Client({
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers,],
+	partials: [Partials.Message, Partials.Channel,],
+});
 
 client.commands = new Collection();
 
@@ -37,5 +41,51 @@ for (const file of eventFiles) {
 		client.on(event.name, (...args) => event.execute(...args));
 	}
 }
+
+client.on('messageDelete', async message => {
+	if (!message.guild)
+		return;
+
+	try {
+
+		const combat = await db('combat')
+			.where({
+				msg_id: message.id
+			})
+			.first();
+
+		if (!combat)
+			return;
+	
+		await db('combat')
+			.where({ id: combat.id })
+			.delete();
+
+		console.log(`Deleted combat ${combat.id} because message was deleted.`);
+	} catch (err) {
+		console.error(err);
+	}
+
+	try {
+		if (message.partial) {
+			await message.fetch();
+		}
+
+		const combat = await db('combat')
+			.where({ msg_id: message.id })
+			.first();
+
+		if (!combat)
+			return;
+
+		await db('combat')
+			.where({ id: combat.id })
+			.delete();
+
+		console.log(`Combat ${combat.id} deleted.`);
+	} catch (err) {
+		console.error(err);
+	}
+});
 
 client.login(token);

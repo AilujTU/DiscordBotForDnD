@@ -28,6 +28,28 @@ async function migrate() {
         });
     }
 
+    const hasTrackedChannelsTable = await db.schema.hasTable('trackedChannels');
+
+    if (!hasTrackedChannelsTable) {
+        await db.schema.createTable('trackedChannel', table => {
+            table.increments('id').primary();
+            table.string('channel_id').notNullable();
+            table.boolean('active').defaultTo(false);
+            table.integer('uptime').defaultTo(0);
+        });
+    }
+
+    const hasTrackedUsersTable = await db.schema.hasTable('trackedUsers');
+
+    if (!hasTrackedUsersTable) {
+        await db.schema.createTable('trackedUser', table => {
+            table.increments('id').primary();
+            table.integer('channel_id').references('id').inTable('trackedChannels').onDelete('CASCADE');
+            table.string('user_id').notNullable();
+            table.integer('talk_time').defaultTo(0);
+        });
+    }
+
     console.log('Database successfully migrated.')
     await db.destroy();
 }

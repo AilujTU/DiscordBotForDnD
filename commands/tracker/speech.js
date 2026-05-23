@@ -34,7 +34,7 @@ module.exports = {
                 )
         ),
     async execute(interaction) {
-        switch (interaction.getSubcommand()) {
+        switch (interaction.options.getSubcommand()) {
             case 'begin':
                 return handleSpeechTrackerBegin(interaction);
             case 'stats':

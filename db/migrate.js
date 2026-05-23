@@ -28,7 +28,7 @@ async function migrate() {
         });
     }
 
-    const hasTrackedChannelsTable = await db.schema.hasTable('trackedChannels');
+    const hasTrackedChannelsTable = await db.schema.hasTable('trackedChannel');
 
     if (!hasTrackedChannelsTable) {
         await db.schema.createTable('trackedChannel', table => {
@@ -39,12 +39,12 @@ async function migrate() {
         });
     }
 
-    const hasTrackedUsersTable = await db.schema.hasTable('trackedUsers');
+    const hasTrackedUsersTable = await db.schema.hasTable('trackedUser');
 
     if (!hasTrackedUsersTable) {
         await db.schema.createTable('trackedUser', table => {
             table.increments('id').primary();
-            table.integer('channel_id').references('id').inTable('trackedChannels').onDelete('CASCADE');
+            table.integer('channel_id').references('id').inTable('trackedChannel').onDelete('CASCADE');
             table.string('user_id').notNullable();
             table.integer('talk_time').defaultTo(0);
         });

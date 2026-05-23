@@ -6,7 +6,7 @@ module.exports = {
         .setName('observe')
         .setDescription('Tracks the participation in a given voice channel.')
         .addSubcommand(sub =>
-            sub.setName('begin').setDescription('')
+            sub.setName('begin').setDescription('Begins the tracking of given voice channel.')
                 .addChannelOption(option =>
                     option
                         .setName('channel')
@@ -20,7 +20,7 @@ module.exports = {
                 )
         )
         .addSubcommand(sub =>
-            sub.setName('stats').setDescription('')
+            sub.setName('stats').setDescription('Returns the statistics for the given channel.')
                 .addChannelOption(option =>
                     option
                         .setName('channel')

@@ -5,7 +5,7 @@ const { token } = require('./config.json');
 const db = require('./db/knex');
 
 const client = new Client({
-	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers,],
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildVoiceStates],
 	partials: [Partials.Message, Partials.Channel,],
 });
 

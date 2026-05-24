@@ -145,7 +145,7 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
             let memberName = `Unknown User (${userId})`;
 
             try {
-                const member = await interaction.guild.members.fetch(userId);
+                const member = await guild.members.fetch(userId);
 
                 memberName = member.displayName;
             } catch (_) { }

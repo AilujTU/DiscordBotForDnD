@@ -250,7 +250,27 @@ async function handleSpeechTrackerStats(interaction) {
 }
 
 async function handleSpeechTrackerEnd(interaction) {
+    const channel = interaction.options.getChannel('channel');
 
+    const isPresistentChannel = await db('trackedChannel')
+        .where({
+            channel_id: channel
+        }).first();
+
+    if (!isPresistentChannel) {
+        return await interaction.reply({
+            content: `The channel ${channel.name} is not presistently observerd.`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    await db('trackedChannel')
+        .where({
+            channel_id: channel.id
+        })
+        .update({
+            keep: false
+        });
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { handleSpeechTrackerBegin, handleSpeechTrackerStats } = require('../../utils');
+const { handleSpeechTrackerBegin, handleSpeechTrackerStats, handleSpeechTrackerEnd } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -32,6 +32,15 @@ module.exports = {
                         .setName('end')
                         .setDescription('End observation until added again.')
                 )
+        )
+        .addSubcommand(sub => 
+            sub.setName('end').setDescription('Change to an not presistent observation')
+                .addChannelOption(option => 
+                    option
+                        .setName('channel')
+                        .setDescription('The channel that shouldn\'t be presistently observered anylonger.')
+                        .setRequired(true)
+                )
         ),
     async execute(interaction) {
         switch (interaction.options.getSubcommand()) {
@@ -39,6 +48,8 @@ module.exports = {
                 return handleSpeechTrackerBegin(interaction);
             case 'stats':
                 return handleSpeechTrackerStats(interaction);
+            case 'end':
+                return handleSpeechTrackerEnd(interaction);
         }
     }
 };

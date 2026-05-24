@@ -3,9 +3,10 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
 const { token } = require('./config.json');
 const db = require('./db/knex');
+const { activeTrackers, finalizeTracker, stopTracking, buildSpeechStatsEmbed, startTracking } = require('./utils');
 
 const client = new Client({
-	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildVoiceStates],
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates],
 	partials: [Partials.Message, Partials.Channel,],
 });
 
@@ -56,7 +57,7 @@ client.on('messageDelete', async message => {
 
 		if (!combat)
 			return;
-	
+
 		await db('combat')
 			.where({ id: combat.id })
 			.delete();
@@ -86,6 +87,67 @@ client.on('messageDelete', async message => {
 	} catch (err) {
 		console.error(err);
 	}
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+	const channel = oldState.channel;
+	if (!channel)
+		return;
+
+	const channelIsEmpty = channel.members.filter(m => !m.user.bot).size === 0;
+
+	const tracker = activeTrackers.get(channel.id);
+	if (!tracker)
+		return;
+
+
+	if (channelIsEmpty) {
+		console.log(`${channel.name} is empty.`); // TODO: delete once working & tested
+
+		finalizeTracker(tracker);
+
+		const embed = await buildSpeechStatsEmbed(channel.guild, channel, tracker);
+
+		await channel.send({
+			embeds: [embed]
+		});
+
+		await stopTracking(channel.id);
+	}
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+	if (!newState.channel)
+		return;
+	if (newState.member.user.bot)
+		return;
+
+	const channel = newState.channel;
+	if (activeTrackers.has(channel.id))
+		return;
+
+	const isPresistentChannel = await db('trackedChannel')
+		.where({
+			channel_id: channel.id,
+			keep: true
+		}).first();
+
+	if (!isPresistentChannel)
+		return;
+	if (isPresistentChannel.active == false) {
+		await db('trackedChannel')
+			.where({
+				channel_id: channel.id,
+				keep: true
+			})
+			.update({
+				active: true
+			});
+	}
+
+	await startTracking(channel);
+
+	console.log(`Started observing ${channel.name} [PRESISTENT]`); // TODO: delete once working & tested
 });
 
 client.login(token);

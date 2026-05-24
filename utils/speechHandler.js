@@ -254,12 +254,12 @@ async function handleSpeechTrackerEnd(interaction) {
 
     const isPresistentChannel = await db('trackedChannel')
         .where({
-            channel_id: channel
+            channel_id: channel.id
         }).first();
 
     if (!isPresistentChannel) {
         return await interaction.reply({
-            content: `The channel ${channel.name} is not presistently observerd.`,
+            content: `The channel ${channel.name} is not persistently observed.`,
             flags: MessageFlags.Ephemeral
         });
     }
@@ -268,9 +268,11 @@ async function handleSpeechTrackerEnd(interaction) {
         .where({
             channel_id: channel.id
         })
-        .update({
-            keep: false
-        });
+        .del();
+
+    return await interaction.reply({
+        content: `The channel ${channel.name} is not being persistently observed any longer.`
+    })
 }
 
 module.exports = {

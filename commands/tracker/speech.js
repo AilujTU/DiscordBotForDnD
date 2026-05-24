@@ -36,11 +36,11 @@ module.exports = {
                 )
         )
         .addSubcommand(sub => 
-            sub.setName('end').setDescription('Change to an not presistent observation')
+            sub.setName('end').setDescription('Change to an not persistent observation')
                 .addChannelOption(option => 
                     option
                         .setName('channel')
-                        .setDescription('The channel that shouldn\'t be presistently observered anylonger.')
+                        .setDescription('The channel that shouldn\'t be persistently observered anylonger.')
                         .setRequired(true)
                         .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
                 )

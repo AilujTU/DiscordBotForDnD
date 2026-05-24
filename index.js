@@ -147,7 +147,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 	await startTracking(channel);
 
-	console.log(`Started observing ${channel.name} [PRESISTENT]`); // TODO: delete once working & tested
+	console.log(`Started observing ${channel.name} [PERSISTENT]`); // TODO: delete once working & tested
 });
 
 client.login(token);

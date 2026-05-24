@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 const { handleSpeechTrackerBegin, handleSpeechTrackerStats, handleSpeechTrackerEnd } = require('../../utils');
 
 module.exports = {
@@ -12,6 +12,7 @@ module.exports = {
                         .setName('channel')
                         .setDescription('The channel to be observed.')
                         .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
                 )
                 .addBooleanOption(option =>
                     option
@@ -26,6 +27,7 @@ module.exports = {
                         .setName('channel')
                         .setDescription('The channel of which the statistics should be shared.')
                         .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
                 )
                 .addBooleanOption(option =>
                     option
@@ -40,6 +42,7 @@ module.exports = {
                         .setName('channel')
                         .setDescription('The channel that shouldn\'t be presistently observered anylonger.')
                         .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
                 )
         ),
     async execute(interaction) {

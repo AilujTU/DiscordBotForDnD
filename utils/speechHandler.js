@@ -23,15 +23,56 @@ async function handleSpeechTrackerBegin(interaction) {
         });
     }
 
-    const connection = addBotToChannel(channel);
+
+    if (isKept) {
+        const hasChannelEntry = await db('trackedChannel')
+            .where({
+                channel_id: channel.id,
+            }).first();
+
+        if (!hasChannelEntry) {
+            await db('trackedChannel')
+                .insert({
+                    channel_id: channel.id,
+                    active: true,
+                    keep: isKept
+                });
+        } else {
+            await db('trackedChannel')
+                .where({
+                    id: hasChannelEntry.id
+                })
+                .update({
+                    active: true,
+                    keep: isKept
+                });
+        }
+    }
+
+    await startTracking(channel, isKept);
+
+    return await interaction.reply({
+        content: `
+            Now observing ${channel.name}.
+            Presistent tracking: ${isKept ? 'enabled' : 'disabled'}
+        `,
+        flags: MessageFlags.Ephemeral
+    });
+}
+
+async function startTracking(channel) {
+
+    if (activeTrackers.has(channel.id))
+        return activeTrackers.get(channel.id);
+
+    const connection = await addBotToChannel(channel);
 
     activeTrackers.set(channel.id, {
         connection,
         speakingUsers: new Map(),
         stats: new Map(),
-        startedAt: Date.now(),
+        startedAt: Date.now()
     });
-
 
     const tracker = activeTrackers.get(channel.id);
 
@@ -40,7 +81,7 @@ async function handleSpeechTrackerBegin(interaction) {
             return;
 
         tracker.speakingUsers.set(userId, Date.now());
-        console.log(`${userId} started speaking.`);
+        console.log(`${userId} started speaking.`); // TODO: delete once working & tested
     });
 
     connection.receiver.speaking.on('end', async userId => {
@@ -55,41 +96,7 @@ async function handleSpeechTrackerBegin(interaction) {
         const current = tracker.stats.get(userId) ?? 0;
 
         tracker.stats.set(userId, current + duration);
-        console.log(`${userId} spoke for ${duration}ms.`);
-    });
-
-    if (isKept) {
-        const hasChannelEntry = await db('trackedChannel')
-            .where({
-                channel_id: channel.id,
-            }).first();
-
-        if (!hasChannelEntry) {
-            await db('trackedChannel')
-                .insert({
-                    channel_id: channel.id,
-                    active: true,
-                    keep: true,
-                    msg_id: null,
-                });
-        } else {
-            await db('trackedChannel')
-                .where({
-                    id: hasChannelEntry.id
-                })
-                .update({
-                    active: true,
-                    keep: true
-                });
-        }
-    }
-
-    return await interaction.reply({
-        content: `
-            Now observing ${channel.name}.\n
-            Presistent tracking: ${isKept ? 'enabled' : 'disabled'}
-        `,
-        flags: MessageFlags.Ephemeral
+        console.log(`${userId} spoke for ${duration}ms.`); // TODO: delete once working & tested
     });
 }
 
@@ -102,36 +109,17 @@ function addBotToChannel(channel) {
     });
 
     connection.on(VoiceConnectionStatus.Ready, () => {
-        console.log(`Connected to ${channel.name}`);
+        console.log(`Connected to ${channel.name}`); // TODO: delete once working & tested
     });
 
     connection.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log(`Disconnected to ${channel.name}`);
+        console.log(`Disconnected to ${channel.name}`); // TODO: delete once working & tested
     });
 
     return connection;
 }
 
-async function handleSpeechTrackerStats(interaction) {
-    const channel = interaction.options.getChannel('channel');
-    const isEnded = interaction.options.getBoolean('end') ?? false;
-
-    if (!channel.isVoiceBased()) {
-        return await interaction.reply({
-            content: `The channel ${channel.name} is not a voice channel.`,
-            flags: MessageFlags.Ephemeral
-        });
-    }
-
-    const tracker = activeTrackers.get(channel.id);
-
-    if (!tracker) {
-        return await interaction.reply({
-            content: `The channel ${channel.name} is currently not being observed.`,
-            flags: MessageFlags.Ephemeral
-        });
-    }
-
+function finalizeTracker(tracker) {
     for (const [userId, startedAt] of tracker.speakingUsers) {
         const duration = Date.now() - startedAt;
         const currentTalkTime = tracker.stats.get(userId) ?? 0;
@@ -139,10 +127,12 @@ async function handleSpeechTrackerStats(interaction) {
     }
 
     tracker.speakingUsers.clear();
+}
 
+async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
     const totalSessionTime = Date.now() - tracker.startedAt;
-    const totalSecs = Math.floor(totalSessionTime/1000);
-    const totalMins = Math.floor(totalSecs/60);
+    const totalSecs = Math.floor(totalSessionTime / 1000);
+    const totalMins = Math.floor(totalSecs / 60);
     const totalRemainingSecs = totalSecs % 60;
     const totalSessionTimeMsg = `${totalMins}m ${totalRemainingSecs}s\n`;
 
@@ -175,7 +165,7 @@ async function handleSpeechTrackerStats(interaction) {
     );
 
     const embed = new EmbedBuilder()
-        .setTitle(`Speech Statistics`)
+        .setTitle(`Speech Participation Statistics`)
         .setDescription(description.length > 0 ? description.join('\n\n') : 'No speaking activity recorded.'
         )
         .addFields({
@@ -191,29 +181,67 @@ async function handleSpeechTrackerStats(interaction) {
         .setTimestamp();
 
     if (isEnded) {
-        try {
-            tracker.connection.destroy();
-        } catch (_) { }
+        embed.setFooter({ text: 'Tracking finished' });
+        embed.setColor(colors.combat_inactive);
+    } else {
+        embed.setFooter({ text: 'Tracking active' });
+        embed.setColor(colors.combat_active);
+    }
 
-        activeTrackers.delete(channel.id);
+    return embed;
+}
 
+async function stopTracking(channelId) {
+    const tracker = activeTrackers.get(channelId);
+    if (!tracker)
+        return;
+
+    tracker.connection.destroy();
+    activeTrackers.delete(channelId);
+
+    const isPresistentChannel = await db('trackedChannel')
+        .select('keep')
+        .where({
+            channel_Id: channelId
+        }).first();
+
+    if (isPresistentChannel) {
         await db('trackedChannel')
             .where({
-                channel_id: channel.id
+                channel_id: channelId
             })
             .update({
                 active: false
             });
+    }
+}
 
-        embed.setFooter({
-            text: 'Tracking ended',
+async function handleSpeechTrackerStats(interaction) {
+    const channel = interaction.options.getChannel('channel');
+    const isEnded = interaction.options.getBoolean('end') ?? false;
+
+    if (!channel.isVoiceBased()) {
+        return await interaction.reply({
+            content: `The channel ${channel.name} is not a voice channel.`,
+            flags: MessageFlags.Ephemeral
         });
-        embed.setColor(colors.combat_inactive);
-    } else {
-        embed.setFooter({
-            text: 'Tracking active',
+    }
+
+    const tracker = activeTrackers.get(channel.id);
+
+    if (!tracker) {
+        return await interaction.reply({
+            content: `The channel ${channel.name} is currently not being observed.`,
+            flags: MessageFlags.Ephemeral
         });
-        embed.setColor(colors.combat_active);
+    }
+
+    finalizeTracker(tracker);
+
+    const embed = await buildSpeechStatsEmbed(interaction.guild, channel, tracker, isEnded);
+
+    if (isEnded) {
+        stopTracking(tracker);
     }
 
     return await interaction.reply({
@@ -221,7 +249,17 @@ async function handleSpeechTrackerStats(interaction) {
     });
 }
 
+async function handleSpeechTrackerEnd(interaction) {
+
+}
+
 module.exports = {
     handleSpeechTrackerBegin,
     handleSpeechTrackerStats,
+    handleSpeechTrackerEnd,
+    activeTrackers,
+    finalizeTracker,
+    buildSpeechStatsEmbed,
+    stopTracking,
+    startTracking
 };

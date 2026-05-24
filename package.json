@@ -4,9 +4,10 @@
   "description": "A simple discord bot for D&amp;D.",
   "main": "index.js",
   "scripts": {
+    "migrate": "node db/migrate.js",
     "deploy": "node deploy-commands.js",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "node db/migrate.js && node deploy-commands.js && nodemon index.js"
   },
   "repository": {
     "type": "git",

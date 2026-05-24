@@ -36,7 +36,6 @@ async function migrate() {
             table.string('channel_id').notNullable();
             table.boolean('active').defaultTo(false);
             table.boolean('keep').defaultTo(false);
-            table.string('msg_id').nullable();
         });
     }
 

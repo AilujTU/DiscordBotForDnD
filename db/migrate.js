@@ -28,6 +28,17 @@ async function migrate() {
         });
     }
 
+    const hasTrackedChannelTable = await db.schema.hasTable('trackedChannel');
+
+    if (!hasTrackedChannelTable) {
+        await db.schema.createTable('trackedChannel', table => {
+            table.increments('id').primary();
+            table.string('channel_id').notNullable();
+            table.boolean('active').defaultTo(false);
+            table.boolean('keep').defaultTo(false);
+        });
+    }
+
     console.log('Database successfully migrated.')
     await db.destroy();
 }

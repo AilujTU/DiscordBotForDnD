@@ -4,4 +4,5 @@ module.exports = {
     db,
     combat: db('combat'),
     combatant: db('combatant'),
+    trackedChannels: db('trackedChannel'),
 };

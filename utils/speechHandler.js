@@ -129,6 +129,18 @@ function finalizeTracker(tracker) {
     tracker.speakingUsers.clear();
 }
 
+function getStatsSnapshot(tracker) {
+    const snapshot = new Map(tracker.stats);
+
+    for (const [userId, startedAt] of tracker.speakingUsers) {
+        const duration = Date.now() - startedAt;
+        const currentTalkTime = tracker.stats.get(userId) ?? 0;
+        snapshot.set(userId, currentTalkTime + duration);
+    }
+
+    return snapshot;
+}
+
 async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
     const totalSessionTime = Date.now() - tracker.startedAt;
     const totalSecs = Math.floor(totalSessionTime / 1000);
@@ -136,7 +148,9 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
     const totalRemainingSecs = totalSecs % 60;
     const totalSessionTimeMsg = `${totalMins}m ${totalRemainingSecs}s\n`;
 
-    const sortedStats = [...tracker.stats.entries()]
+    const stats = getStatsSnapshot(tracker);
+
+    const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
 
     const description = await Promise.all(
@@ -154,7 +168,8 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
             const mins = Math.floor(secs / 60);
             const remainingSecs = secs % 60;
 
-            const percentage = totalSessionTime > 0 ? ((talkTime / totalSessionTime) * 100).toFixed(1) : 0;
+            const totalTalkTime = [...stats.values()].reduce((a,b) => a+b,0);
+            const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
 
             return (
                 `**${index + 1}. ${memberName}**\n` +
@@ -236,12 +251,12 @@ async function handleSpeechTrackerStats(interaction) {
         });
     }
 
-    finalizeTracker(tracker);
 
     const embed = await buildSpeechStatsEmbed(interaction.guild, channel, tracker, isEnded);
 
     if (isEnded) {
-        stopTracking(tracker);
+        finalizeTracker(tracker);
+        await stopTracking(channel.id);
     }
 
     return await interaction.reply({

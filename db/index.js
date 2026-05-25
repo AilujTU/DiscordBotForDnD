@@ -5,5 +5,4 @@ module.exports = {
     combat: db('combat'),
     combatant: db('combatant'),
     trackedChannels: db('trackedChannel'),
-    trackedUsers: db('trackedUser'),
 };

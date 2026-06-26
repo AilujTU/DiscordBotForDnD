@@ -290,6 +290,41 @@ async function handleSpeechTrackerEnd(interaction) {
     })
 }
 
+async function restorePersistentTrackers(client) {
+    const persistenChannels = await db('trackedChannel')
+            .where({keep:true})
+            .select('channel_id');
+    
+    for (const {channel_id: channelId} of persistenChannels) {
+        if (activeTrackers.has(channelId))
+            continue;
+
+        let channel;
+
+        try {
+            channel = await client.channels.fetch(channelId);
+        } catch {
+            continue;
+        }
+
+        if (!channel?.isVoiceBased)
+            continue;
+
+        const humanMembers = channel.members.filter(m => !m.user.bot);
+
+        if (humanMembers.size === 0)
+            continue;
+
+        await startTracking(channel, true);
+        await db('trackedChannel')
+            .where({channel_id: channelId})
+            .update({active: true});
+        
+        console.log(`Restored persistent tracking for ${channel.name}`);
+    }
+    
+}
+
 module.exports = {
     handleSpeechTrackerBegin,
     handleSpeechTrackerStats,
@@ -298,5 +333,6 @@ module.exports = {
     finalizeTracker,
     buildSpeechStatsEmbed,
     stopTracking,
-    startTracking
+    startTracking,
+    restorePersistentTrackers,
 };

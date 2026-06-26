@@ -1,8 +1,11 @@
 const { Events } = require('discord.js');
+const {restorePersistentTrackers} = require('../utils');
+
 module.exports = {
 	name: Events.ClientReady,
 	once: true,
-	execute(client) {
+	async execute(client) {
 		console.log(`Ready! Logged in as ${client.user.tag}`);
+		await restorePersistentTrackers(client); // TODO: delete if fully finished w/ voice handler
 	},
 };

@@ -52,10 +52,10 @@ async function handleSpeechTrackerBegin(interaction) {
     await startTracking(channel, isKept);
 
     return await interaction.reply({
-        content: `
-            Now observing ${channel.name}.
-            Presistent tracking: ${isKept ? 'enabled' : 'disabled'}
-        `,
+        content: 
+            `Now observing ${channel.name}.\n`+
+            `Presistent tracking: ${isKept ? 'enabled' : 'disabled'}`
+        ,
         flags: MessageFlags.Ephemeral
     });
 }
@@ -113,7 +113,7 @@ function addBotToChannel(channel) {
     });
 
     connection.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log(`Disconnected to ${channel.name}`); // TODO: delete once working & tested
+        console.log(`Disconnected from ${channel.name}`); // TODO: delete once working & tested
     });
 
     return connection;
@@ -167,15 +167,27 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
             const secs = Math.floor(talkTime / 1000);
             const mins = Math.floor(secs / 60);
             const remainingSecs = secs % 60;
+            const hrs = Math.floor(mins / 60);
+            const remainingMins = hrs == 0 ? -1 : mins % 60;
 
-            const totalTalkTime = [...stats.values()].reduce((a,b) => a+b,0);
+
+            const totalTalkTime = [...stats.values()].reduce((a, b) => a + b, 0);
             const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
 
-            return (
-                `**${index + 1}. ${memberName}**\n` +
-                `**Time Spoken:** ${mins}m ${remainingSecs}s\n` +
-                `**Participation:** ${percentage}%`
-            );
+            if (remainingMins == -1) {
+                return (
+                    `**${index + 1}. ${memberName}**\n` +
+                    `**Time Spoken:** ${mins}m ${remainingSecs}s\n` +
+                    `**Participation:** ${percentage}%`
+                );
+            } else {
+                return (
+                    `**${index + 1}. ${memberName}**\n` +
+                    `**Time Spoken:** ${hrs}h ${remainingMins}m ${remainingSecs}s\n` +
+                    `**Participation:** ${percentage}%`
+                );
+            }
+
         })
     );
 
@@ -292,10 +304,10 @@ async function handleSpeechTrackerEnd(interaction) {
 
 async function restorePersistentTrackers(client) {
     const persistenChannels = await db('trackedChannel')
-            .where({keep:true})
-            .select('channel_id');
-    
-    for (const {channel_id: channelId} of persistenChannels) {
+        .where({ keep: true })
+        .select('channel_id');
+
+    for (const { channel_id: channelId } of persistenChannels) {
         if (activeTrackers.has(channelId))
             continue;
 
@@ -317,12 +329,12 @@ async function restorePersistentTrackers(client) {
 
         await startTracking(channel, true);
         await db('trackedChannel')
-            .where({channel_id: channelId})
-            .update({active: true});
-        
+            .where({ channel_id: channelId })
+            .update({ active: true });
+
         console.log(`Restored persistent tracking for ${channel.name}`);
     }
-    
+
 }
 
 module.exports = {

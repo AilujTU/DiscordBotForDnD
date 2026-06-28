@@ -5,7 +5,7 @@ const { joinVoiceChannel, entersState, VoiceConnectionStatus, } = require('@disc
 
 const activeTrackers = new Map();
 
-async function handleSpeechTrackerBegin(interaction) {
+async function handleSpeechTrackerTrack(interaction) {
     const channel = interaction.options.getChannel('channel');
     const isKept = interaction.options.getBoolean('keep') ?? false;
 
@@ -243,7 +243,7 @@ async function stopTracking(channelId) {
     }
 }
 
-async function handleSpeechTrackerStats(interaction) {
+async function handleSpeechTrackerTally(interaction) {
     const channel = interaction.options.getChannel('channel');
     const isEnded = interaction.options.getBoolean('end') ?? false;
 
@@ -276,7 +276,7 @@ async function handleSpeechTrackerStats(interaction) {
     });
 }
 
-async function handleSpeechTrackerEnd(interaction) {
+async function handleSpeechTrackerBreak(interaction) {
     const channel = interaction.options.getChannel('channel');
 
     const isPresistentChannel = await db('trackedChannel')
@@ -338,9 +338,9 @@ async function restorePersistentTrackers(client) {
 }
 
 module.exports = {
-    handleSpeechTrackerBegin,
-    handleSpeechTrackerStats,
-    handleSpeechTrackerEnd,
+    handleSpeechTrackerTrack,
+    handleSpeechTrackerTally,
+    handleSpeechTrackerBreak,
     activeTrackers,
     finalizeTracker,
     buildSpeechStatsEmbed,

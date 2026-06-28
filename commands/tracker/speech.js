@@ -1,12 +1,12 @@
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
-const { handleSpeechTrackerBegin, handleSpeechTrackerStats, handleSpeechTrackerEnd } = require('../../utils');
+const { handleSpeechTrackerTrack, handleSpeechTrackerTally, handleSpeechTrackerBreak } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('observe')
+        .setName('speech')
         .setDescription('Tracks the participation in a given voice channel.')
         .addSubcommand(sub =>
-            sub.setName('begin').setDescription('Begins the tracking of given voice channel.')
+            sub.setName('track').setDescription('Begins the tracking of given voice channel.')
                 .addChannelOption(option =>
                     option
                         .setName('channel')
@@ -21,7 +21,7 @@ module.exports = {
                 )
         )
         .addSubcommand(sub =>
-            sub.setName('stats').setDescription('Returns the statistics for the given channel.')
+            sub.setName('tally').setDescription('Returns the current tally for the given channel.')
                 .addChannelOption(option =>
                     option
                         .setName('channel')
@@ -36,7 +36,7 @@ module.exports = {
                 )
         )
         .addSubcommand(sub => 
-            sub.setName('end').setDescription('Change to an not persistent observation')
+            sub.setName('break').setDescription('Change to an not persistent observation')
                 .addChannelOption(option => 
                     option
                         .setName('channel')
@@ -47,12 +47,12 @@ module.exports = {
         ),
     async execute(interaction) {
         switch (interaction.options.getSubcommand()) {
-            case 'begin':
-                return handleSpeechTrackerBegin(interaction);
-            case 'stats':
-                return handleSpeechTrackerStats(interaction);
-            case 'end':
-                return handleSpeechTrackerEnd(interaction);
+            case 'track':
+                return handleSpeechTrackerTrack(interaction);
+            case 'tally':
+                return handleSpeechTrackerTally(interaction);
+            case 'break':
+                return handleSpeechTrackerBreak(interaction);
         }
     }
-};
+};  

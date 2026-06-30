@@ -339,7 +339,6 @@ async function restorePersistentTrackers(client) {
 
 }
 
-//FIXME: activeTrackers needs guildId too to be unique
 async function updateStatsInStorage(channel) {
     const channelId = channel.id;
     const guildId = channel.guild.id;
@@ -358,7 +357,7 @@ async function updateStatsInStorage(channel) {
     for (const [i, [memberId, duration]] of stats.entries()) {
         // update table trackedMember
         const percentage = totalSessionTime > 0 ? ((duration / totalTalkTime) * 100).toFixed(1) : 0;
-        await updateTrackedMemberTable(guildId, channelId, memberId, percentage);
+        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration);
 
         const trackedMember = await db('trackedMember')
             .where({
@@ -368,7 +367,7 @@ async function updateStatsInStorage(channel) {
             }).first();
 
         // update table speechPlacementStats
-        await updateSpeechPlacementStats(trackedMember.id,i+1);
+        await updateSpeechPlacementStats(trackedMember.id, i + 1);
 
         // update table speechYearlyStats   
         await updateSpeechYearlyStats(trackedMember.id, month, percentage);
@@ -376,7 +375,7 @@ async function updateStatsInStorage(channel) {
 
 }
 
-async function updateTrackedMemberTable(guildId, channelId, memberId, percentage) {
+async function updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration) {
     const userEntryExists = await db('trackedMember')
         .where({
             member_id: memberId,
@@ -393,9 +392,10 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
             .update({
                 last_session_percentage: userEntryExists.this_session_percentage,
                 this_session_percentage: percentage,
-                all_time_percentage: allTime
+                all_time_percentage: allTime,
+                all_time_ms: userEntryExists.all_time_duration+duration
             });
-        
+
     } else {
         await db('trackedMember').insert({
             member_id: memberId,
@@ -421,7 +421,7 @@ async function updateSpeechPlacementStats(id, position) {
                 id: entryExists.id
             })
             .update({
-                count: entryExists.count+1
+                count: entryExists.count + 1
             });
     } else {
         await db('speechPlacementStat').insert({
@@ -432,10 +432,10 @@ async function updateSpeechPlacementStats(id, position) {
     }
 }
 
-async function updateSpeechYearlyStats(id,month, percentage) {
+async function updateSpeechYearlyStats(id, month, percentage) {
     const entryExists = await db('speechYearlyStat')
         .where({
-            trackedMember_id:id,
+            trackedMember_id: id,
             month: month
         }).first();
 
@@ -461,10 +461,46 @@ async function updateSpeechYearlyStats(id,month, percentage) {
 
 async function handleMemberStats(interaction) {
     const member = interaction.options.getMember('user');
+    const channel = interaction.options.getChannel('channel') ?? null;
     const guild = interaction.guild;
 
-    const statsOfMember = await db('trackedMember')
-        .where({member_id})
+    let trackedMemberExists;
+
+    if (channel) {
+        trackedMemberExists = await db('trackedMember')
+            .where({
+                member_id: member.id,
+                channel_id: channel.id,
+                guild_id: guild.id
+            }).first();
+
+        if (!trackedMemberExists) {
+            return await interaction.reply({
+                content: `The member ${member.name} has no previously observed speaking participation in channel ${channel.name}.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+
+
+    } else {
+        trackedMemberExists = await db('trackedMember')
+            .where({
+                member_id: member.id,
+                guild_id: guild.id,
+            }).first();
+
+
+        if (!trackedMemberExists) {
+            return await interaction.reply({
+                content: `The member ${member.name} has no previously observed speaking participation in this guild.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    }
+
+
+
 }
 
 module.exports = {

@@ -50,6 +50,7 @@ async function migrate() {
             table.double('last_session_percentage');
             table.double('this_session_percentage');
             table.double('all_time_percentage');
+            table.double('all_time_duration').defaultTo(0);
         });
     }
 

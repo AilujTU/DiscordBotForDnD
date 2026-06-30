@@ -53,6 +53,11 @@ module.exports = {
                         .setDescription('The user you want stats for.')
                         .setRequired(true)
                 )
+                .addChannelOption(option => 
+                    option
+                        .setName('channel')
+                        .setDescription('The specific channel for the speech participation stats.')
+                )
         ),
     async execute(interaction) {
         switch (interaction.options.getSubcommand()) {

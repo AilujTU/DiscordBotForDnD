@@ -112,7 +112,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 			embeds: [embed]
 		});
 
-		await stopTracking(channel.id);
+		await stopTracking(channel);
 	}
 });
 

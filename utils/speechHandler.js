@@ -218,12 +218,13 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
     return embed;
 }
 
-async function stopTracking(channelId) {
+async function stopTracking(channel) {
+    const channelId = channel.id;
     const tracker = activeTrackers.get(channelId);
     if (!tracker)
         return;
 
-    await updateStatsInStorage(channelId);
+    await updateStatsInStorage(channel);
 
     tracker.connection.destroy();
     activeTrackers.delete(channelId);
@@ -269,7 +270,7 @@ async function handleSpeechTrackerTally(interaction) {
 
     if (isEnded) {
         finalizeTracker(tracker);
-        await stopTracking(channel.id);
+        await stopTracking(channel);
     }
 
     return await interaction.reply({
@@ -339,7 +340,9 @@ async function restorePersistentTrackers(client) {
 }
 
 //FIXME: activeTrackers needs guildId too to be unique
-async function updateStatsInStorage(channelId) {
+async function updateStatsInStorage(channel) {
+    const channelId = channel.id;
+    const guildId = channel.guild.id;
     const tracker = activeTrackers.get(channelId);
     if (!tracker)
         return;
@@ -355,12 +358,13 @@ async function updateStatsInStorage(channelId) {
     for (const [i, [memberId, duration]] of stats.entries()) {
         // update table trackedMember
         const percentage = totalSessionTime > 0 ? ((duration / totalTalkTime) * 100).toFixed(1) : 0;
-        await updateTrackedMemberTable(channelId, memberId, percentage);
+        await updateTrackedMemberTable(guildId, channelId, memberId, percentage);
 
         const trackedMember = await db('trackedMember')
             .where({
+                member_id: memberId,
                 channel_id: channelId,
-                member_id: memberId
+                guild_id: guildId
             }).first();
 
         // update table speechPlacementStats
@@ -372,11 +376,12 @@ async function updateStatsInStorage(channelId) {
 
 }
 
-async function updateTrackedMemberTable(guildId, memberId, percentage) {
+async function updateTrackedMemberTable(guildId, channelId, memberId, percentage) {
     const userEntryExists = await db('trackedMember')
         .where({
-            guild_id: channelId,
-            member_id: memberId
+            member_id: memberId,
+            channel_id: channelId,
+            guild_id: guildId,
         })
         .first();
 
@@ -393,8 +398,9 @@ async function updateTrackedMemberTable(guildId, memberId, percentage) {
         
     } else {
         await db('trackedMember').insert({
-            guild_id: guildId,
             member_id: memberId,
+            channel_id: channelId,
+            guild_id: guildId,
             last_session_percentage: null,
             this_session_percentage: percentage,
             all_time_percentage: percentage
@@ -405,7 +411,7 @@ async function updateTrackedMemberTable(guildId, memberId, percentage) {
 async function updateSpeechPlacementStats(id, position) {
     const entryExists = await db('speechPlacementStat')
         .where({
-            trackedMember_id:id,
+            trackedMember_id: id,
             position: position
         }).first();
 

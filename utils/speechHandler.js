@@ -52,8 +52,8 @@ async function handleSpeechTrackerTrack(interaction) {
     await startTracking(channel, isKept);
 
     return await interaction.reply({
-        content: 
-            `Now observing ${channel.name}.\n`+
+        content:
+            `Now observing ${channel.name}.\n` +
             `Presistent tracking: ${isKept ? 'enabled' : 'disabled'}`
         ,
         flags: MessageFlags.Ephemeral
@@ -223,6 +223,8 @@ async function stopTracking(channelId) {
     if (!tracker)
         return;
 
+    await updateStatsInStorage(channelId);
+
     tracker.connection.destroy();
     activeTrackers.delete(channelId);
 
@@ -262,7 +264,6 @@ async function handleSpeechTrackerTally(interaction) {
             flags: MessageFlags.Ephemeral
         });
     }
-
 
     const embed = await buildSpeechStatsEmbed(interaction.guild, channel, tracker, isEnded);
 
@@ -337,10 +338,134 @@ async function restorePersistentTrackers(client) {
 
 }
 
+//FIXME: activeTrackers needs guildId too to be unique
+async function updateStatsInStorage(channelId) {
+    const tracker = activeTrackers.get(channelId);
+    if (!tracker)
+        return;
+
+    const totalSessionTime = Date.now() - tracker.startedAt;
+    const stats = [...getStatsSnapshot(tracker).entries()]
+        .sort((a, b) => b[1] - a[1]);
+    const totalTalkTime = [...stats.values()]
+        .reduce((a, b) => a + b, 0);
+    const month = new Date(tracker.startedAt).getMonth() + 1;
+
+    // iterate over all members that have stats
+    for (const [i, [memberId, duration]] of stats.entries()) {
+        // update table trackedMember
+        const percentage = totalSessionTime > 0 ? ((duration / totalTalkTime) * 100).toFixed(1) : 0;
+        await updateTrackedMemberTable(channelId, memberId, percentage);
+
+        const trackedMember = await db('trackedMember')
+            .where({
+                channel_id: channelId,
+                member_id: memberId
+            }).first();
+
+        // update table speechPlacementStats
+        await updateSpeechPlacementStats(trackedMember.id,i+1);
+
+        // update table speechYearlyStats   
+        await updateSpeechYearlyStats(trackedMember.id, month, percentage);
+    }
+
+}
+
+async function updateTrackedMemberTable(guildId, memberId, percentage) {
+    const userEntryExists = await db('trackedMember')
+        .where({
+            guild_id: channelId,
+            member_id: memberId
+        })
+        .first();
+
+    if (userEntryExists) {
+        const allTime = (percentage + userEntryExists.all_time_percentage) / 2;
+
+        await db('trackedMember')
+            .where({ id: userEntryExists.id })
+            .update({
+                last_session_percentage: userEntryExists.this_session_percentage,
+                this_session_percentage: percentage,
+                all_time_percentage: allTime
+            });
+        
+    } else {
+        await db('trackedMember').insert({
+            guild_id: guildId,
+            member_id: memberId,
+            last_session_percentage: null,
+            this_session_percentage: percentage,
+            all_time_percentage: percentage
+        });
+    }
+}
+
+async function updateSpeechPlacementStats(id, position) {
+    const entryExists = await db('speechPlacementStat')
+        .where({
+            trackedMember_id:id,
+            position: position
+        }).first();
+
+    if (entryExists) {
+        await db('speechPlacementStat')
+            .where({
+                id: entryExists.id
+            })
+            .update({
+                count: entryExists.count+1
+            });
+    } else {
+        await db('speechPlacementStat').insert({
+            trackedMember_id: id,
+            position: position,
+            count: 1
+        });
+    }
+}
+
+async function updateSpeechYearlyStats(id,month, percentage) {
+    const entryExists = await db('speechYearlyStat')
+        .where({
+            trackedMember_id:id,
+            month: month
+        }).first();
+
+    if (entryExists) {
+        const averagePercentage = (percentage + entryExists.percentage) / 2;
+
+        await db('speechYearlyStat')
+            .where({
+                trackedMember_id: id,
+                month: month
+            })
+            .update({
+                percentage: averagePercentage
+            });
+    } else {
+        await db('speechYearlyStat').insert({
+            trackedMember_id: id,
+            month: month,
+            percentage: percentage
+        });
+    }
+}
+
+async function handleMemberStats(interaction) {
+    const member = interaction.options.getMember('user');
+    const guild = interaction.guild;
+
+    const statsOfMember = await db('trackedMember')
+        .where({member_id})
+}
+
 module.exports = {
     handleSpeechTrackerTrack,
     handleSpeechTrackerTally,
     handleSpeechTrackerBreak,
+    handleMemberStats,
     activeTrackers,
     finalizeTracker,
     buildSpeechStatsEmbed,

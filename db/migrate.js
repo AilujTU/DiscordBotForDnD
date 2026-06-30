@@ -46,7 +46,9 @@ async function migrate() {
             table.increments('id').primary();
             table.string('member_id').notNullable();
             table.string('channel_id').notNullable();
+            table.string('guild_id').notNullable();
             table.double('last_session_percentage');
+            table.double('this_session_percentage');
             table.double('all_time_percentage');
         });
     }
@@ -56,7 +58,7 @@ async function migrate() {
     if (!hasSpeechPlacementStatTable) {
         await db.schema.createTable('speechPlacementStat', table => {
             table.increments('id').primary();
-            table.integer('tracked_member_id')
+            table.integer('trackedMember_id')
                 .unsigned()
                 .notNullable()
                 .references('id')
@@ -77,7 +79,7 @@ async function migrate() {
                 .notNullable()
                 .references('id')
                 .inTable('trackedMember');
-            table.string('month');
+            table.integer('month');
             table.double('percentage').notNullable().defaultTo(0);
         });
     }

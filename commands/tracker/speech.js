@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
-const { handleSpeechTrackerTrack, handleSpeechTrackerTally, handleSpeechTrackerBreak } = require('../../utils');
+const { handleSpeechTrackerTrack, handleSpeechTrackerTally, handleSpeechTrackerBreak, handleMemberStats } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -36,13 +36,22 @@ module.exports = {
                 )
         )
         .addSubcommand(sub => 
-            sub.setName('break').setDescription('Change to an not persistent observation')
+            sub.setName('break').setDescription('Change to a not persistent observation')
                 .addChannelOption(option => 
                     option
                         .setName('channel')
                         .setDescription('The channel that shouldn\'t be persistently observered anylonger.')
                         .setRequired(true)
                         .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+                )
+        )
+        .addSubcommand(sub => 
+            sub.setName('stats').setDescription('Individual stats for the specified user.')
+                .addUserOption(option => 
+                    option
+                        .setName('user')
+                        .setDescription('The user you want stats for.')
+                        .setRequired(true)
                 )
         ),
     async execute(interaction) {
@@ -53,6 +62,8 @@ module.exports = {
                 return handleSpeechTrackerTally(interaction);
             case 'break':
                 return handleSpeechTrackerBreak(interaction);
+            case 'stats':
+                return handleMemberStats(interaction);
         }
     }
 };  

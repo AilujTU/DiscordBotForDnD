@@ -72,7 +72,7 @@ async function migrate() {
 
     const hasSpeechYearlyStatTable = await db.schema.hasTable('speechYearlyStat');
 
-    if (!hasSpeechPlacementStatTable) {
+    if (!hasSpeechYearlyStatTable) {
         await db.schema.createTable('speechYearlyStat', table => {
             table.increments('id').primary();
             table.integer('trackedMember_id')

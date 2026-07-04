@@ -57,6 +57,7 @@ module.exports = {
                     option
                         .setName('channel')
                         .setDescription('The specific channel for the speech participation stats.')
+                        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
                 )
         ),
     async execute(interaction) {

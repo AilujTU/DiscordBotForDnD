@@ -47,9 +47,9 @@ async function migrate() {
             table.string('member_id').notNullable();
             table.string('channel_id').notNullable();
             table.string('guild_id').notNullable();
-            table.double('last_session_percentage');
-            table.double('this_session_percentage');
-            table.double('all_time_percentage');
+            table.decimal('last_session_percentage', 5,2);
+            table.decimal('this_session_percentage', 5,2);
+            table.decimal('all_time_percentage', 5,2);
             table.double('all_time_duration').defaultTo(0);
         });
     }
@@ -81,7 +81,7 @@ async function migrate() {
                 .references('id')
                 .inTable('trackedMember');
             table.integer('month');
-            table.double('percentage').notNullable().defaultTo(0);
+            table.decimal('percentage', 5,2).notNullable().defaultTo(0);
         });
     }
 

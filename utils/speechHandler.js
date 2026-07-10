@@ -2,6 +2,7 @@ const db = require('../db/knex');
 const { EmbedBuilder, MessageFlags, ChannelFlags, ChannelType, Message } = require('discord.js');
 const colors = require('./colors');
 const { joinVoiceChannel, entersState, VoiceConnectionStatus, } = require('@discordjs/voice');
+const { buildMemberStatsCard } = require('./cardBuilder');
 
 const activeTrackers = new Map();
 
@@ -349,14 +350,18 @@ async function updateStatsInStorage(channel) {
     const totalSessionTime = Date.now() - tracker.startedAt;
     const stats = [...getStatsSnapshot(tracker).entries()]
         .sort((a, b) => b[1] - a[1]);
+    console.log(`Stats: ${stats}`);
     const totalTalkTime = [...stats.values()]
         .reduce((a, b) => a + b, 0);
+    console.log(`total talk time: ${totalTalkTime}`);
     const month = new Date(tracker.startedAt).getMonth() + 1;
-
+    console.log(`Month: ${month}`);
+    console.log('reached updateStatsInStorage, right before loop');
     // iterate over all members that have stats
     for (const [i, [memberId, duration]] of stats.entries()) {
         // update table trackedMember
         const percentage = totalSessionTime > 0 ? ((duration / totalTalkTime) * 100).toFixed(1) : 0;
+        console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
         await updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration);
 
         const trackedMember = await db('trackedMember')
@@ -393,7 +398,7 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
                 last_session_percentage: userEntryExists.this_session_percentage,
                 this_session_percentage: percentage,
                 all_time_percentage: allTime,
-                all_time_ms: userEntryExists.all_time_duration+duration
+                all_time_duration: userEntryExists.all_time_duration+duration
             });
 
     } else {
@@ -401,9 +406,10 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
             member_id: memberId,
             channel_id: channelId,
             guild_id: guildId,
-            last_session_percentage: null,
+            last_session_percentage: 0,
             this_session_percentage: percentage,
-            all_time_percentage: percentage
+            all_time_percentage: percentage,
+            all_time_duration: duration
         });
     }
 }
@@ -480,8 +486,10 @@ async function handleMemberStats(interaction) {
                 flags: MessageFlags.Ephemeral
             });
         }
+        await interaction.deferReply({content: 'Searching for the truth...'});
+        const attachment = await buildMemberStatsCard(await computeStatisticsForChannel(member, trackedMemberExists.id));
 
-
+        return await interaction.editReply({ files: [attachment] });
 
     } else {
         trackedMemberExists = await db('trackedMember')
@@ -497,10 +505,85 @@ async function handleMemberStats(interaction) {
                 flags: MessageFlags.Ephemeral
             });
         }
+
+        await interaction.deferReply({content: 'Searching for the truth...'});
+
+        const trackedMemberIds = trackedMemberExists = await db('trackedMember')
+            .where({
+                member_id: member.id,
+                guild_id: guild.id,
+            })
+            .select('id');
+        const attachment = await buildMemberStatsCard(await computeStatistics(member, trackedMemberIds));
+
+        return interaction.editReply({ files: [attachment] });
+    }
+}
+
+async function computeStatisticsForChannel(member, id) {
+
+    const entryOfMember = await db('trackedMember')
+        .where({ id: id }).first();
+
+    if (!entryOfMember)
+        return;
+
+    const lastSession = entryOfMember.last_session_percentage;
+    const currentSession = entryOfMember.this_session_percentage;
+    const allTime = entryOfMember.all_time_percentage;
+    const totalDuration = entryOfMember.all_time_duration;
+
+    //calculate avg pos
+    const rowsInPlacement = await db('speechPlacementStat')
+        .where({ trackedMember_id: id })
+        .select('position', 'count');
+
+    let totalWeightedPos = 0;
+    let totalCount = 0;
+    for (const row of rowsInPlacement) {
+        totalWeightedPos += Number(row.position) * Number(row.count);
+        totalCount += Number(row.count);
     }
 
+    const averagePosition = totalCount > 0 ? totalWeightedPos / totalCount : 0;
 
+    // format placement statistics
+    let placements = [];
+    for (let i=0; i<rowsInPlacement.length; i++) {
+        placements[i] = {position: rowsInPlacement[i].position, count: rowsInPlacement[i].count}
+    }
 
+    // format yearly statistics
+    const rowsInYearly = await db('speechYearlyStat')
+        .where({ trackedMember_id: id })
+        .select('month', 'percentage');
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let monthly = [];
+
+    for (let i = 0; i < m.length; i++) {
+        monthly[i] = {month: m[i], percentage: rowsInYearly[i].percentage};
+    }
+
+    return {
+        username: member.displayName,
+        avatar: member.avatar,
+        lastSession,
+        currentSession,
+        thisSession: currentSession,
+        allTime,
+        totalDuration,
+        averagePosition,
+        placements,
+        monthly,
+    };
+}
+
+async function computeStatistics(member, ids) {
+
+    //TODO: implement
+    for (const id of ids) {
+        const channel = guild.getChannel(id);
+    }
 }
 
 module.exports = {

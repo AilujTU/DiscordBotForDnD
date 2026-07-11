@@ -364,8 +364,8 @@ async function updateStatsInStorage(channel) {
         // update table trackedMember
         console.log(`Talk time: ${talkTime}`);
         const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
-        
-      
+
+
         console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
         await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime);
 
@@ -403,7 +403,7 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
                 last_session_percentage: userEntryExists.this_session_percentage,
                 this_session_percentage: percentage,
                 all_time_percentage: allTime,
-                all_time_duration: userEntryExists.all_time_duration+duration
+                all_time_duration: userEntryExists.all_time_duration + duration
             });
 
     } else {
@@ -472,57 +472,28 @@ async function updateSpeechYearlyStats(id, month, percentage) {
 
 async function handleMemberStats(interaction) {
     const member = interaction.options.getMember('user');
-    const channel = interaction.options.getChannel('channel') ?? null;
+    const channel = interaction.options.getChannel('channel');
     const guild = interaction.guild;
 
     let trackedMemberExists;
 
-    if (channel) {
-        trackedMemberExists = await db('trackedMember')
-            .where({
-                member_id: member.id,
-                channel_id: channel.id,
-                guild_id: guild.id
-            }).first();
+    trackedMemberExists = await db('trackedMember')
+        .where({
+            member_id: member.id,
+            channel_id: channel.id,
+            guild_id: guild.id
+        }).first();
 
-        if (!trackedMemberExists) {
-            return await interaction.reply({
-                content: `The member ${member.name} has no previously observed speaking participation in channel ${channel.name}.`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
-        await interaction.deferReply({content: 'Searching for the truth...'});
-        const attachment = await buildMemberStatsCard(await computeStatisticsForChannel(member, trackedMemberExists.id));
-
-        return await interaction.editReply({ files: [attachment] });
-
-    } else {
-        trackedMemberExists = await db('trackedMember')
-            .where({
-                member_id: member.id,
-                guild_id: guild.id,
-            }).first();
-
-
-        if (!trackedMemberExists) {
-            return await interaction.reply({
-                content: `The member ${member.name} has no previously observed speaking participation in this guild.`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        await interaction.deferReply({content: 'Searching for the truth...'});
-
-        const trackedMemberIds = trackedMemberExists = await db('trackedMember')
-            .where({
-                member_id: member.id,
-                guild_id: guild.id,
-            })
-            .select('id');
-        const attachment = await buildMemberStatsCard(await computeStatistics(member, trackedMemberIds));
-
-        return interaction.editReply({ files: [attachment] });
+    if (!trackedMemberExists) {
+        return await interaction.reply({
+            content: `The member ${member.name} has no previously observed speaking participation in channel ${channel.name}.`,
+            flags: MessageFlags.Ephemeral
+        });
     }
+    await interaction.deferReply({ content: 'Searching for the truth...' });
+    const attachment = await buildMemberStatsCard(await computeStatisticsForChannel(member, trackedMemberExists.id));
+
+    return await interaction.editReply({ files: [attachment] });
 }
 
 async function computeStatisticsForChannel(member, id) {
@@ -554,8 +525,8 @@ async function computeStatisticsForChannel(member, id) {
 
     // format placement statistics
     let placements = [];
-    for (let i=0; i<rowsInPlacement.length; i++) {
-        placements[i] = {position: rowsInPlacement[i].position, count: rowsInPlacement[i].count}
+    for (let i = 0; i < rowsInPlacement.length; i++) {
+        placements[i] = { position: rowsInPlacement[i].position, count: rowsInPlacement[i].count }
     }
 
     // format yearly statistics
@@ -566,31 +537,20 @@ async function computeStatisticsForChannel(member, id) {
     let monthly = [];
 
     for (let i = 0; i < rowsInYearly.length; i++) {
-        console.log(`rows in yearly table: ${rowsInYearly}`);
-        console.log(`rows in yearly percentage: ${rowsInYearly[i].percentage}`);
-        monthly[i] = {month: m[i], percentage: rowsInYearly[i].percentage};
+        monthly[i] = { month: m[i], percentage: rowsInYearly[i].percentage };
     }
 
     return {
         username: member.displayName,
-        avatar: member.avatar,
+        avatar: member.displayAvatarURL({ extension: 'jpg' }),
         lastSession,
         currentSession,
-        thisSession: currentSession,
         allTime,
         totalDuration,
         averagePosition,
         placements,
         monthly,
     };
-}
-
-async function computeStatistics(member, ids) {
-
-    //TODO: implement
-    for (const id of ids) {
-        const channel = guild.getChannel(id);
-    }
 }
 
 module.exports = {

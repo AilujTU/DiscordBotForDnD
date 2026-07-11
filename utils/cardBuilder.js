@@ -51,24 +51,12 @@ async function buildMemberStatsCard(stats) {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext("2d");
 
-    //
-    // Background
-    //
-
     ctx.fillStyle = "#313338";
     ctx.fillRect(0,0,WIDTH,HEIGHT);
-
-    //
-    // Header
-    //
 
     ctx.fillStyle = "white";
     ctx.font = "bold 36px sans-serif";
     ctx.fillText("Voice Statistics",40,55);
-
-    //
-    // Avatar
-    //
 
     if(stats.avatar){
 
@@ -85,16 +73,8 @@ async function buildMemberStatsCard(stats) {
         ctx.restore();
     }
 
-    //
-    // Name
-    //
-
     ctx.font = "28px sans-serif";
     ctx.fillText(stats.username,40,105);
-
-    //
-    // Metrics
-    //
 
     drawMetric(ctx,"Last Session",
         `${stats.lastSession.toFixed(1)}%`,
@@ -125,10 +105,6 @@ async function buildMemberStatsCard(stats) {
         350,
         230
     );
-
-    //
-    // Participation chart
-    //
 
     const participation = await chartRenderer.renderToBuffer({
 
@@ -164,10 +140,6 @@ async function buildMemberStatsCard(stats) {
     const participationImg = await loadImage(participation);
 
     ctx.drawImage(participationImg,460,130);
-
-    //
-    // Placement chart
-    //
 
     const placements = await placementRenderer.renderToBuffer({
 

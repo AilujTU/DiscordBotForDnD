@@ -506,6 +506,7 @@ async function computeStatisticsForChannel(member, id) {
 
     const lastSession = entryOfMember.last_session_percentage;
     const currentSession = entryOfMember.this_session_percentage;
+    const sessionDelta = currentSession - lastSession;
     const allTime = entryOfMember.all_time_percentage;
     const totalDuration = entryOfMember.all_time_duration;
 
@@ -540,16 +541,22 @@ async function computeStatisticsForChannel(member, id) {
         monthly[i] = { month: m[i], percentage: rowsInYearly[i].percentage };
     }
 
+    const avg = monthly.reduce((s,m)=> s+m.percentage, 0) / monthly.length;
+    const variance = monthly.reduce((s,m) => s+Math.pow(m.percentage-avg,2),0)/monthly.length;
+    const stdDev = Math.sqrt(variance);
+    const consistency = Math.max(0,100-stdDev*2);
+
     return {
         username: member.displayName,
         avatar: member.displayAvatarURL({ extension: 'jpg' }),
-        lastSession,
         currentSession,
+        sessionDelta,
         allTime,
         totalDuration,
         averagePosition,
         placements,
         monthly,
+        consistency,
     };
 }
 

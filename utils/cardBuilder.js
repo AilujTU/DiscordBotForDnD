@@ -1,31 +1,101 @@
 const path = require('node:path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { AttachmentBuilder } = require('discord.js');
+const { AttachmentBuilder, Colors } = require('discord.js');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
 const WIDTH = 1200;
-const HEIGHT = 700;
+const HEIGHT = 750;
+const SPACING = 25;
+const COLORS = {
+
+    bg: "#313338",
+
+    card: "#2B2D31",
+
+    border: "#404249",
+
+    title: "#FFFFFF",
+
+    text: "#FFFFFF",
+
+    subtitle: "#AAAAAA",
+
+    accent: "#5865F2",
+
+    positive: "#57F287",
+
+    negative: "#ED4245"
+};
+
 const chartRenderer = new ChartJSNodeCanvas({
-    width: 700,
-    height: 250,
-    backgroundColour: '#2b2d31'
+    width: 800,
+    height: 300,
+    backgroundColour: COLORS.card
 });
 
-const placementRenderer = new ChartJSNodeCanvas({
-    width: 350,
-    height: 250,
-    backgroundColour: '#2b2d31'
-});
+function drawMetric(ctx, label, value, x, y) {
+    const FONT = 18;
+    ctx.fillStyle = COLORS.subtitle;
+    ctx.font = `${FONT}px sans-serif`;
+    ctx.fillText(label, x, y+FONT);
 
-function drawMetric(ctx,label,value,x,y){
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText(value, x, y + FONT + 34);
+}
 
-    ctx.fillStyle="#AAAAAA";
-    ctx.font="18px sans-serif";
-    ctx.fillText(label,x,y);
+function drawDelta(ctx, delta, x, y) {
+    const FONT = 18;
+    if (Math.abs(delta) < 0.05) {
+        ctx.fillStyle = "#A8A8A8";
+        ctx.font = `${FONT}px sans-serif`;
+        ctx.fillText("±0.0%", x, y+FONT+34);
+        return;
+    }
 
-    ctx.fillStyle="white";
-    ctx.font="bold 26px sans-serif";
-    ctx.fillText(value,x,y+30);
+    const positive = delta > 0;
+
+    ctx.fillStyle = positive
+        ? COLORS.positive
+        : COLORS.negative;
+
+    ctx.font = `bold ${FONT}px sans-serif`;
+
+    const arrow = positive ? "▲" : "▼";
+
+    ctx.fillText(
+        `${arrow} ${Math.abs(delta).toFixed(1)}%`,
+        x,
+        y
+    );
+}
+
+function drawCard(ctx, x, y, w, h) {
+
+    ctx.fillStyle = COLORS.card;
+    roundRect(ctx, x, y, w, h, 18);
+    ctx.fill();
+    
+
+    ctx.strokeStyle = COLORS.border;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+
+    ctx.moveTo(x + r, y);
+
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+
+    ctx.arcTo(x, y + h, x, y, r);
+
+    ctx.arcTo(x, y, x + w, y, r);
+
+    ctx.closePath();
 }
 
 function formatDuration(ms) {
@@ -46,91 +116,200 @@ function formatDuration(ms) {
     return `${seconds}s`;
 }
 
+function drawPositionDistribution(ctx, placements,x,given_y) {
+    let y = given_y;
+
+    const width = 750-SPACING;
+
+    const max = Math.max(...placements.map(p => p.count));
+
+    for (const p of placements) {
+
+        ctx.fillStyle = COLORS.subtitle;
+
+        ctx.font = "18px sans-serif";
+
+        ctx.fillText(`#${p.position}`, x, y);
+
+        const w = (p.count / max) * width;
+
+        ctx.fillStyle = COLORS.accent;
+
+        roundRect(ctx, x + 45, y - 15, w, 18, 18);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = COLORS.title;
+
+        ctx.fillText(
+            p.count.toString(),
+            x + 55 + width,
+            y
+        );
+
+        y += 42;
+    }
+}
+
 async function buildMemberStatsCard(stats) {
 
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#313338";
-    ctx.fillRect(0,0,WIDTH,HEIGHT);
+    /* LAYOUT:
+    ----------------------
+    |   title + avatar   |
+    ----------------------
+    |       |graph       |
+    |metrics|------------|
+    |       |distribution|
+    ---------------------
 
-    ctx.fillStyle = "white";
-    ctx.font = "bold 36px sans-serif";
-    ctx.fillText("Voice Statistics",40,55);
+    */
+    drawCard(ctx, 0, 0, WIDTH, HEIGHT);
+    //metrics - left till bottom
+    const metrics = {
+        x: 0+SPACING,
+        y: 100+SPACING,
+        w: 250,
+        h: 600
+    };
+    drawCard(ctx, metrics.x, metrics.y, metrics.w, metrics.h);
+    // graph - right till half
+    const graph = {
+        x: 250+2*SPACING,
+        y: 100+SPACING,
+        w: 875,
+        h: 375
+    };
+    drawCard(ctx, graph.x, graph.y, graph.w, graph.h);
+    // distribution - right till bottom
+    const distribution = {
+        x: 250+2*SPACING,
+        y: 475+2*SPACING,
+        w: 875,
+        h: 200
+    };
+    drawCard(ctx, distribution.x, distribution.y, distribution.w, distribution.h);
 
-    if(stats.avatar){
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 42px sans-serif";
+    ctx.fillText(`Voice Statistics of ${stats.username}`, 2*SPACING, 3*SPACING);
+
+    if (stats.avatar) {
 
         const avatar = await loadImage(stats.avatar);
 
         ctx.save();
 
         ctx.beginPath();
-        ctx.arc(1110,70,40,0,Math.PI*2);
+        ctx.arc(1110, 70, 40, 0, Math.PI * 2);
         ctx.clip();
 
-        ctx.drawImage(avatar,1070,30,80,80);
+        ctx.drawImage(avatar, 1070, 30, 80, 80);
 
         ctx.restore();
     }
 
-    ctx.font = "28px sans-serif";
-    ctx.fillText(stats.username,40,105);
-
-    drawMetric(ctx,"Last Session",
-        `${stats.lastSession.toFixed(1)}%`,
-        40,
-        160
-    );
-
-    drawMetric(ctx,"Current Session",
+    drawMetric(ctx, "Current Session",
         `${stats.currentSession.toFixed(1)}%`,
-        40,
-        230
+        metrics.x+SPACING,
+        metrics.y+SPACING
     );
 
-    drawMetric(ctx,"All Time",
+    drawDelta(ctx, stats.sessionDelta,
+        metrics.x+SPACING+100,
+        metrics.y+SPACING
+    );
+
+    drawMetric(ctx, "All Time",
         `${stats.allTime.toFixed(1)}%`,
-        40,
-        300
+        metrics.x+SPACING,
+        metrics.y+SPACING+100
     );
 
-    drawMetric(ctx,"Average Position",
+    drawMetric(ctx, "Average Position",
         `#${stats.averagePosition.toFixed(1)}`,
-        350,
-        160
+        metrics.x+SPACING,
+        metrics.y+SPACING+200
     );
 
-    drawMetric(ctx,"Total Time",
+    drawMetric(ctx, "Total Time",
         formatDuration(stats.totalDuration),
-        350,
-        230
+        metrics.x+SPACING,
+        metrics.y+SPACING+300
     );
+
+    drawMetric(ctx, "Consistency",
+        `${stats.consistency.toFixed(0)}%`,
+        metrics.x+SPACING,
+        metrics.y+SPACING+400
+    );
+
+    ctx.font = "bold 24px sans-serif";
+
+    ctx.fillStyle = COLORS.title;
+
+    ctx.fillText("Participation Trend", graph.x+SPACING, graph.y+2*SPACING);
+
+    ctx.fillText("Position Distribution", distribution.x+SPACING, distribution.y+2*SPACING);
 
     const participation = await chartRenderer.renderToBuffer({
 
-        type:"line",
+        type: "line",
 
-        data:{
-            labels:stats.monthly.map(x=>x.month),
+        data: {
+            labels: stats.monthly.map(x => x.month),
 
-            datasets:[{
-                label:"Participation %",
-                data:stats.monthly.map(x=>x.percentage),
-                borderWidth:3,
-                tension:0.3
+            datasets: [{
+                data: stats.monthly.map(x => x.percentage),
+
+                borderColor: COLORS.accent,
+                backgroundColor: COLORS.accent,
+
+                pointRadius: 5,
+
+                borderWidth: 4,
+
+                fill: true
             }]
         },
 
-        options:{
-            plugins:{
-                legend:{
-                    display:false
+        options: {
+            responsive: false,
+            animation: false,
+
+            plugins: {
+                legend: {
+                    display: false
                 }
             },
-            scales:{
-                y:{
-                    min:0,
-                    max:100
+
+            elements: {
+                line: {
+                    tension: 0.4,
+                    borderWidth: 4
+                },
+                point: {
+                    radius: 4,
+                    hoverRadius: 5
+                }
+            },
+
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        stepSize: 10,
+                        callback: v => `${v}%`
+                    }
                 }
             }
         }
@@ -139,36 +318,11 @@ async function buildMemberStatsCard(stats) {
 
     const participationImg = await loadImage(participation);
 
-    ctx.drawImage(participationImg,460,130);
+    ctx.drawImage(participationImg, graph.x+1.5*SPACING, graph.y+2.5*SPACING);
 
-    const placements = await placementRenderer.renderToBuffer({
+    drawPositionDistribution(ctx, stats.placements,distribution.x+1.5*SPACING, distribution.y+3*SPACING);
 
-        type:"bar",
-
-        data:{
-
-            labels:stats.placements.map(x=>`#${x.position}`),
-
-            datasets:[{
-                data:stats.placements.map(x=>x.count)
-            }]
-        },
-
-        options:{
-            plugins:{
-                legend:{
-                    display:false
-                }
-            }
-        }
-
-    });
-
-    const placementImg = await loadImage(placements);
-
-    ctx.drawImage(placementImg,40,390);
-
-    return canvas.encode("png"); 
+    return canvas.encode("png");
 }
 
 module.exports = {

@@ -348,21 +348,26 @@ async function updateStatsInStorage(channel) {
         return;
 
     const totalSessionTime = Date.now() - tracker.startedAt;
-    const stats = [...getStatsSnapshot(tracker).entries()]
+    const stats = getStatsSnapshot(tracker);
+    const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
-    console.log(`Stats: ${stats}`);
+    console.log(`sortedStats: ${sortedStats}`);
     const totalTalkTime = [...stats.values()]
         .reduce((a, b) => a + b, 0);
     console.log(`total talk time: ${totalTalkTime}`);
     const month = new Date(tracker.startedAt).getMonth() + 1;
     console.log(`Month: ${month}`);
     console.log('reached updateStatsInStorage, right before loop');
+
     // iterate over all members that have stats
-    for (const [i, [memberId, duration]] of stats.entries()) {
+    for (const [i, [memberId, talkTime]] of sortedStats.entries()) {
         // update table trackedMember
-        const percentage = totalSessionTime > 0 ? ((duration / totalTalkTime) * 100).toFixed(1) : 0;
+        console.log(`Talk time: ${talkTime}`);
+        const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
+        
+      
         console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
-        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration);
+        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime);
 
         const trackedMember = await db('trackedMember')
             .where({
@@ -560,7 +565,9 @@ async function computeStatisticsForChannel(member, id) {
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     let monthly = [];
 
-    for (let i = 0; i < m.length; i++) {
+    for (let i = 0; i < rowsInYearly.length; i++) {
+        console.log(`rows in yearly table: ${rowsInYearly}`);
+        console.log(`rows in yearly percentage: ${rowsInYearly[i].percentage}`);
         monthly[i] = {month: m[i], percentage: rowsInYearly[i].percentage};
     }
 

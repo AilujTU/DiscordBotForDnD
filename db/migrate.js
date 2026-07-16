@@ -47,6 +47,9 @@ async function migrate() {
             table.string('member_id').notNullable();
             table.string('channel_id').notNullable();
             table.string('guild_id').notNullable();
+            table.integer('session_count').defaultTo(0);
+            table.integer('last_session_position');
+            table.integer('this_session_position');
             table.decimal('last_session_percentage', 5,2);
             table.decimal('this_session_percentage', 5,2);
             table.decimal('all_time_percentage', 5,2);

@@ -367,7 +367,7 @@ async function updateStatsInStorage(channel) {
 
 
         console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
-        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime);
+        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime, i+1);
 
         const trackedMember = await db('trackedMember')
             .where({
@@ -380,12 +380,12 @@ async function updateStatsInStorage(channel) {
         await updateSpeechPlacementStats(trackedMember.id, i + 1);
 
         // update table speechYearlyStats   
-        await updateSpeechYearlyStats(trackedMember.id, month, percentage);
+        await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count-1);
     }
 
 }
 
-async function updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration) {
+async function updateTrackedMemberTable(guildId, channelId, memberId, percentage, duration, position) {
     const userEntryExists = await db('trackedMember')
         .where({
             member_id: memberId,
@@ -395,14 +395,17 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
         .first();
 
     if (userEntryExists) {
-        const allTime = (percentage + userEntryExists.all_time_percentage) / 2;
+        const allTimePercent = (userEntryExists.all_time_percentage*userEntryExists.session_count + percentage) / (userEntryExists.session_count+1);
 
         await db('trackedMember')
             .where({ id: userEntryExists.id })
             .update({
+                session_count: userEntryExists.session_count+1,
+                last_session_position: userEntryExists.this_session_position,
+                this_session_position: position,
                 last_session_percentage: userEntryExists.this_session_percentage,
                 this_session_percentage: percentage,
-                all_time_percentage: allTime,
+                all_time_percentage: allTimePercent,
                 all_time_duration: userEntryExists.all_time_duration + duration
             });
 
@@ -411,7 +414,10 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
             member_id: memberId,
             channel_id: channelId,
             guild_id: guildId,
-            last_session_percentage: 0,
+            session_count: 1,
+            last_session_position: position,
+            this_session_position: position,
+            last_session_percentage: percentage,
             this_session_percentage: percentage,
             all_time_percentage: percentage,
             all_time_duration: duration
@@ -443,7 +449,7 @@ async function updateSpeechPlacementStats(id, position) {
     }
 }
 
-async function updateSpeechYearlyStats(id, month, percentage) {
+async function updateSpeechYearlyStats(id, month, percentage, session_count) {
     const entryExists = await db('speechYearlyStat')
         .where({
             trackedMember_id: id,
@@ -451,7 +457,7 @@ async function updateSpeechYearlyStats(id, month, percentage) {
         }).first();
 
     if (entryExists) {
-        const averagePercentage = (percentage + entryExists.percentage) / 2;
+        const averagePercentage = (entryExists.percentage * session_count + percentage) / (session_count+1);
 
         await db('speechYearlyStat')
             .where({
@@ -504,6 +510,10 @@ async function computeStatisticsForChannel(member, id) {
     if (!entryOfMember)
         return;
 
+    const sessionCount = entryOfMember.session_count;
+    const lastPosition = entryOfMember.last_session_position;
+    const currentPosition = entryOfMember.this_session_position;
+    const positionDelta = currentPosition - lastPosition;
     const lastSession = entryOfMember.last_session_percentage;
     const currentSession = entryOfMember.this_session_percentage;
     const sessionDelta = currentSession - lastSession;
@@ -549,6 +559,8 @@ async function computeStatisticsForChannel(member, id) {
     return {
         username: member.displayName,
         avatar: member.displayAvatarURL({ extension: 'jpg' }),
+        currentPosition,
+        positionDelta,
         currentSession,
         sessionDelta,
         allTime,

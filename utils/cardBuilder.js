@@ -37,19 +37,20 @@ function drawMetric(ctx, label, value, x, y) {
     const FONT = 18;
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = `${FONT}px sans-serif`;
-    ctx.fillText(label, x, y+FONT);
+    ctx.fillText(label, x, y + FONT);
 
     ctx.fillStyle = COLORS.title;
     ctx.font = "bold 26px sans-serif";
     ctx.fillText(value, x, y + FONT + 34);
 }
 
-function drawDelta(ctx, delta, x, y) {
+function drawDelta(ctx, delta, x, y, isPercent) {
     const FONT = 18;
     if (Math.abs(delta) < 0.05) {
         ctx.fillStyle = "#A8A8A8";
         ctx.font = `${FONT}px sans-serif`;
-        ctx.fillText("±0.0%", x, y+FONT+34);
+        const format = isPercent? "±0.0%" : "±0";
+        ctx.fillText(format, x, y + FONT + 34);
         return;
     }
 
@@ -75,7 +76,7 @@ function drawCard(ctx, x, y, w, h) {
     ctx.fillStyle = COLORS.card;
     roundRect(ctx, x, y, w, h, 18);
     ctx.fill();
-    
+
 
     ctx.strokeStyle = COLORS.border;
     ctx.lineWidth = 2;
@@ -116,10 +117,10 @@ function formatDuration(ms) {
     return `${seconds}s`;
 }
 
-function drawPositionDistribution(ctx, placements,x,given_y) {
+function drawPositionDistribution(ctx, placements, x, given_y) {
     let y = given_y;
 
-    const width = 750-SPACING;
+    const width = 750 - 2*SPACING;
 
     const max = Math.max(...placements.map(p => p.count));
 
@@ -169,24 +170,24 @@ async function buildMemberStatsCard(stats) {
     drawCard(ctx, 0, 0, WIDTH, HEIGHT);
     //metrics - left till bottom
     const metrics = {
-        x: 0+SPACING,
-        y: 100+SPACING,
+        x: 0 + SPACING,
+        y: 100 + SPACING,
         w: 250,
         h: 600
     };
     drawCard(ctx, metrics.x, metrics.y, metrics.w, metrics.h);
     // graph - right till half
     const graph = {
-        x: 250+2*SPACING,
-        y: 100+SPACING,
+        x: 250 + 2 * SPACING,
+        y: 100 + SPACING,
         w: 875,
         h: 375
     };
     drawCard(ctx, graph.x, graph.y, graph.w, graph.h);
     // distribution - right till bottom
     const distribution = {
-        x: 250+2*SPACING,
-        y: 475+2*SPACING,
+        x: 250 + 2 * SPACING,
+        y: 475 + 2 * SPACING,
         w: 875,
         h: 200
     };
@@ -194,7 +195,7 @@ async function buildMemberStatsCard(stats) {
 
     ctx.fillStyle = COLORS.title;
     ctx.font = "bold 42px sans-serif";
-    ctx.fillText(`Voice Statistics of ${stats.username}`, 2*SPACING, 3*SPACING);
+    ctx.fillText(`Voice Statistics of ${stats.username}`, 2 * SPACING, 3 * SPACING);
 
     if (stats.avatar) {
 
@@ -213,46 +214,59 @@ async function buildMemberStatsCard(stats) {
 
     drawMetric(ctx, "Current Session",
         `${stats.currentSession.toFixed(1)}%`,
-        metrics.x+SPACING,
-        metrics.y+SPACING
+        metrics.x + SPACING,
+        metrics.y + SPACING
     );
 
     drawDelta(ctx, stats.sessionDelta,
-        metrics.x+SPACING+100,
-        metrics.y+SPACING
+        metrics.x + SPACING + 75,
+        metrics.y + SPACING,
+        true
+    );
+
+    drawMetric(ctx, "Current Position",
+        `#${stats.currentPosition}`,
+        metrics.x + SPACING,
+        metrics.y + SPACING + 100
+    );
+
+    drawDelta(ctx, stats.sessionDelta,
+        metrics.x + SPACING + 75,
+        metrics.y + SPACING + 100, 
+        false
     );
 
     drawMetric(ctx, "All Time",
         `${stats.allTime.toFixed(1)}%`,
-        metrics.x+SPACING,
-        metrics.y+SPACING+100
+        metrics.x + SPACING,
+        metrics.y + SPACING + 200
     );
 
     drawMetric(ctx, "Average Position",
         `#${stats.averagePosition.toFixed(1)}`,
-        metrics.x+SPACING,
-        metrics.y+SPACING+200
+        metrics.x + SPACING,
+        metrics.y + SPACING + 300
     );
 
     drawMetric(ctx, "Total Time",
         formatDuration(stats.totalDuration),
-        metrics.x+SPACING,
-        metrics.y+SPACING+300
+        metrics.x + SPACING,
+        metrics.y + SPACING + 400
     );
 
     drawMetric(ctx, "Consistency",
         `${stats.consistency.toFixed(0)}%`,
-        metrics.x+SPACING,
-        metrics.y+SPACING+400
+        metrics.x + SPACING,
+        metrics.y + SPACING + 500
     );
 
     ctx.font = "bold 24px sans-serif";
 
     ctx.fillStyle = COLORS.title;
 
-    ctx.fillText("Participation Trend", graph.x+SPACING, graph.y+2*SPACING);
+    ctx.fillText("Participation Trend", graph.x + SPACING, graph.y + 2 * SPACING);
 
-    ctx.fillText("Position Distribution", distribution.x+SPACING, distribution.y+2*SPACING);
+    ctx.fillText("Position Distribution", distribution.x + SPACING, distribution.y + 2 * SPACING);
 
     const participation = await chartRenderer.renderToBuffer({
 
@@ -318,9 +332,9 @@ async function buildMemberStatsCard(stats) {
 
     const participationImg = await loadImage(participation);
 
-    ctx.drawImage(participationImg, graph.x+1.5*SPACING, graph.y+2.5*SPACING);
+    ctx.drawImage(participationImg, graph.x + 1.5 * SPACING, graph.y + 2.5 * SPACING);
 
-    drawPositionDistribution(ctx, stats.placements,distribution.x+1.5*SPACING, distribution.y+3*SPACING);
+    drawPositionDistribution(ctx, stats.placements, distribution.x + 1.5 * SPACING, distribution.y + 3 * SPACING);
 
     return canvas.encode("png");
 }

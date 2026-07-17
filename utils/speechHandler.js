@@ -1,8 +1,8 @@
 const db = require('../db/knex');
-const { EmbedBuilder, MessageFlags, ChannelFlags, ChannelType, Message } = require('discord.js');
+const { EmbedBuilder, MessageFlags, ChannelFlags, ChannelType, Message, AttachmentBuilder } = require('discord.js');
 const colors = require('./colors');
 const { joinVoiceChannel, entersState, VoiceConnectionStatus, } = require('@discordjs/voice');
-const { buildMemberStatsCard } = require('./cardBuilder');
+const { buildMemberStatsCard, buildSpeechTallyCardForMember, formatDuration } = require('./cardBuilder');
 
 const activeTrackers = new Map();
 
@@ -72,10 +72,33 @@ async function startTracking(channel) {
         connection,
         speakingUsers: new Map(),
         stats: new Map(),
-        startedAt: Date.now()
+        startedAt: Date.now(),
+        lastSessionPosition: new Map(),
+        lastSessionPercentage: new Map(),
+        lastTallyPosition: new Map(),
+        lastTallyPercentage: new Map(),
     });
 
     const tracker = activeTrackers.get(channel.id);
+
+    const rows = await db('trackedMember')
+        .where({
+            channel_id: channel.id,
+            guild_id: channel.guild.id
+        })
+        .select('member_id', 'this_session_position', 'this_session_percentage');
+
+    for (const row of rows) {
+        tracker.lastSessionPosition.set(
+            row.member_id,
+            Number(row.this_session_position ?? 0)
+        );
+
+        tracker.lastSessionPercentage.set(
+            row.member_id,
+            Number(row.this_session_percentage ?? 0)
+        );
+    }
 
     connection.receiver.speaking.on('start', async userId => {
         if (tracker.speakingUsers.has(userId))
@@ -142,59 +165,65 @@ function getStatsSnapshot(tracker) {
     return snapshot;
 }
 
-async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
+async function buildSpeechTallyBoard(guild, channel, tracker, isEnded = false) {
     const totalSessionTime = Date.now() - tracker.startedAt;
-    const totalSecs = Math.floor(totalSessionTime / 1000);
-    const totalMins = Math.floor(totalSecs / 60);
-    const totalRemainingSecs = totalSecs % 60;
-    const totalSessionTimeMsg = `${totalMins}m ${totalRemainingSecs}s\n`;
 
     const stats = getStatsSnapshot(tracker);
 
     const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
 
-    const description = await Promise.all(
-        sortedStats.map(async ([userId, talkTime], index) => {
+    const attachments = [];
 
-            let memberName = `Unknown User (${userId})`;
+    for (const [index, [userId, talkTime]] of sortedStats.entries()) {
+        let member;
 
-            try {
-                const member = await guild.members.fetch(userId);
+        try {
+            member = await guild.members.fetch(userId);
+        } catch {
+            continue;
+        }
 
-                memberName = member.displayName;
-            } catch (_) { }
+        const totalTalkTime = [...stats.values()].reduce((a, b) => a + b, 0);
+        const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
 
-            const secs = Math.floor(talkTime / 1000);
-            const mins = Math.floor(secs / 60);
-            const remainingSecs = secs % 60;
-            const hrs = Math.floor(mins / 60);
-            const remainingMins = hrs == 0 ? -1 : mins % 60;
+        const currentPosition = index + 1;
 
+        const previousPosition = tracker.lastTallyPosition.get(userId)
+            ?? tracker.lastSessionPosition.get(userId)
+            ?? currentPosition;
 
-            const totalTalkTime = [...stats.values()].reduce((a, b) => a + b, 0);
-            const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
+        const previousPercentage = tracker.lastTallyPercentage.get(userId)
+            ?? tracker.lastSessionPercentage.get(userId)
+            ?? percentage;
 
-            if (remainingMins == -1) {
-                return (
-                    `**${index + 1}. ${memberName}**\n` +
-                    `**Time Spoken:** ${mins}m ${remainingSecs}s\n` +
-                    `**Participation:** ${percentage}%`
-                );
-            } else {
-                return (
-                    `**${index + 1}. ${memberName}**\n` +
-                    `**Time Spoken:** ${hrs}h ${remainingMins}m ${remainingSecs}s\n` +
-                    `**Participation:** ${percentage}%`
-                );
-            }
+        let positionDelta = 0;
+        let percentageDelta = 0;
 
-        })
-    );
+        if (tracker.lastTallyPosition.has(userId) || tracker.lastTallyPercentage.has(userId)) {
+            positionDelta = previousPosition - currentPosition;
+            percentageDelta = percentage - previousPercentage;
+        }
+
+        const card = await buildSpeechTallyCardForMember({
+            avatar: member.displayAvatarURL({ extension: "png" }),
+            username: member.user.username,
+            position: currentPosition,
+            positionDelta: positionDelta,
+            percentage: percentage,
+            percentageDelta: percentageDelta,
+            timeSpoken: talkTime
+        });
+
+        attachments.push(new AttachmentBuilder(card, { name: `speech-tally-${index + 1}.png` }));
+
+        tracker.lastTallyPosition.set(userId, currentPosition);
+        tracker.lastTallyPercentage.set(userId, percentage);
+    }
 
     const embed = new EmbedBuilder()
         .setTitle(`Speech Participation Statistics`)
-        .setDescription(description.length > 0 ? description.join('\n\n') : 'No speaking activity recorded.'
+        .setDescription(attachments.length > 0 ? 'Speaking activity recorded.' : 'No speaking activity recorded.'
         )
         .addFields({
             name: 'Channel',
@@ -203,7 +232,7 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
         })
         .addFields({
             name: 'Session Length',
-            value: totalSessionTimeMsg,
+            value: formatDuration(totalSessionTime),
             inline: true,
         })
         .setTimestamp();
@@ -216,7 +245,7 @@ async function buildSpeechStatsEmbed(guild, channel, tracker, isEnded = false) {
         embed.setColor(colors.combat_active);
     }
 
-    return embed;
+    return { embed, attachments };
 }
 
 async function stopTracking(channel) {
@@ -251,13 +280,6 @@ async function handleSpeechTrackerTally(interaction) {
     const channel = interaction.options.getChannel('channel');
     const isEnded = interaction.options.getBoolean('end') ?? false;
 
-    if (!channel.isVoiceBased()) {
-        return await interaction.reply({
-            content: `The channel ${channel.name} is not a voice channel.`,
-            flags: MessageFlags.Ephemeral
-        });
-    }
-
     const tracker = activeTrackers.get(channel.id);
 
     if (!tracker) {
@@ -267,15 +289,17 @@ async function handleSpeechTrackerTally(interaction) {
         });
     }
 
-    const embed = await buildSpeechStatsEmbed(interaction.guild, channel, tracker, isEnded);
+    await interaction.deferReply({ content: 'Searching for the truth...' });
+    const { embed, attachments } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
 
     if (isEnded) {
         finalizeTracker(tracker);
         await stopTracking(channel);
     }
 
-    return await interaction.reply({
-        embeds: [embed]
+    return await interaction.editReply({
+        embeds: [embed],
+        files: attachments
     });
 }
 
@@ -367,7 +391,7 @@ async function updateStatsInStorage(channel) {
 
 
         console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
-        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime, i+1);
+        await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime, i + 1);
 
         const trackedMember = await db('trackedMember')
             .where({
@@ -380,7 +404,7 @@ async function updateStatsInStorage(channel) {
         await updateSpeechPlacementStats(trackedMember.id, i + 1);
 
         // update table speechYearlyStats   
-        await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count-1);
+        await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count - 1);
     }
 
 }
@@ -395,12 +419,12 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
         .first();
 
     if (userEntryExists) {
-        const allTimePercent = (userEntryExists.all_time_percentage*userEntryExists.session_count + percentage) / (userEntryExists.session_count+1);
+        const allTimePercent = (userEntryExists.all_time_percentage * userEntryExists.session_count + percentage) / (userEntryExists.session_count + 1);
 
         await db('trackedMember')
             .where({ id: userEntryExists.id })
             .update({
-                session_count: userEntryExists.session_count+1,
+                session_count: userEntryExists.session_count + 1,
                 last_session_position: userEntryExists.this_session_position,
                 this_session_position: position,
                 last_session_percentage: userEntryExists.this_session_percentage,
@@ -457,7 +481,7 @@ async function updateSpeechYearlyStats(id, month, percentage, session_count) {
         }).first();
 
     if (entryExists) {
-        const averagePercentage = (entryExists.percentage * session_count + percentage) / (session_count+1);
+        const averagePercentage = (entryExists.percentage * session_count + percentage) / (session_count + 1);
 
         await db('speechYearlyStat')
             .where({
@@ -551,10 +575,10 @@ async function computeStatisticsForChannel(member, id) {
         monthly[i] = { month: m[i], percentage: rowsInYearly[i].percentage };
     }
 
-    const avg = monthly.reduce((s,m)=> s+m.percentage, 0) / monthly.length;
-    const variance = monthly.reduce((s,m) => s+Math.pow(m.percentage-avg,2),0)/monthly.length;
+    const avg = monthly.reduce((s, m) => s + m.percentage, 0) / monthly.length;
+    const variance = monthly.reduce((s, m) => s + Math.pow(m.percentage - avg, 2), 0) / monthly.length;
     const stdDev = Math.sqrt(variance);
-    const consistency = Math.max(0,100-stdDev*2);
+    const consistency = Math.max(0, 100 - stdDev * 2);
 
     return {
         username: member.displayName,
@@ -579,7 +603,7 @@ module.exports = {
     handleMemberStats,
     activeTrackers,
     finalizeTracker,
-    buildSpeechStatsEmbed,
+    buildSpeechTallyBoard,
     stopTracking,
     startTracking,
     restorePersistentTrackers,

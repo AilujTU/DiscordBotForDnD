@@ -20,7 +20,7 @@ const COLORS = {
 
     subtitle: "#AAAAAA",
 
-    accent: "#5865F2",
+    accent: "#460379",
 
     positive: "#57F287",
 
@@ -44,13 +44,12 @@ function drawMetric(ctx, label, value, x, y) {
     ctx.fillText(value, x, y + FONT + 34);
 }
 
-function drawDelta(ctx, delta, x, y, isPercent) {
-    const FONT = 18;
+function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
     if (Math.abs(delta) < 0.05) {
         ctx.fillStyle = "#A8A8A8";
-        ctx.font = `${FONT}px sans-serif`;
-        const format = isPercent? "±0.0%" : "±0";
-        ctx.fillText(format, x, y + FONT + 34);
+        ctx.font = `${font}px sans-serif`;
+        const format = isPercent ? "±0.0%" : "±0";
+        ctx.fillText(format, x, y);
         return;
     }
 
@@ -60,12 +59,13 @@ function drawDelta(ctx, delta, x, y, isPercent) {
         ? COLORS.positive
         : COLORS.negative;
 
-    ctx.font = `bold ${FONT}px sans-serif`;
+    ctx.font = `bold ${font}px "Segoe UI Symbol", "Noto Sans Symbols", sans-serif`;
 
     const arrow = positive ? "▲" : "▼";
+    const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
 
     ctx.fillText(
-        `${arrow} ${Math.abs(delta).toFixed(1)}%`,
+        `${arrow} ${text}`,
         x,
         y
     );
@@ -120,7 +120,7 @@ function formatDuration(ms) {
 function drawPositionDistribution(ctx, placements, x, given_y) {
     let y = given_y;
 
-    const width = 750 - 2*SPACING;
+    const width = 750 - 2 * SPACING;
 
     const max = Math.max(...placements.map(p => p.count));
 
@@ -150,6 +150,81 @@ function drawPositionDistribution(ctx, placements, x, given_y) {
 
         y += 42;
     }
+}
+
+async function buildSpeechTallyCardForMember(stats) {
+    const canvas = createCanvas(900, 180)
+    const ctx = canvas.getContext("2d");
+
+    /* stats structure = {
+        avatar: image,
+        username: string,
+        position: nr,
+        positionDelta: nr,
+        percentage: nr,
+        percentageDelta: nr,
+        timeSpoken: nr  
+    }
+
+    */
+
+    drawCard(ctx, 0, 0, canvas.width, canvas.height);
+
+    const leftColX = 30;
+    const avatarColX = 200;
+    const metricsColX = 430;
+    const centerY = 90;
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 48px sans-serif";
+    ctx.fillText(`#${stats.position}`, leftColX, centerY);
+
+    ctx.font = "bold 24px sans-serif";
+    drawDelta(ctx, stats.positionDelta,leftColX + 40, centerY+9, false, 24);
+
+    if (stats.avatar) {
+
+        const avatar = await loadImage(stats.avatar);
+
+        ctx.save();
+
+        ctx.beginPath();
+        ctx.arc(avatarColX + 40, centerY, 40, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.drawImage(avatar, avatarColX, centerY - 40, 80, 80);
+
+        ctx.restore();
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = COLORS.title;
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(stats.username || "User", avatarColX + 40, centerY + 60);
+        ctx.textAlign = "left";
+    }
+
+    ctx.fillStyle = COLORS.subtitle;
+    ctx.font = "18px sans-serif";
+    ctx.fillText("Percentage", metricsColX, centerY - 20);
+
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText(`${Number(stats.percentage ?? 0).toFixed(1)}%`, metricsColX, centerY + 8);
+
+    drawDelta(ctx, stats.percentageDelta, metricsColX + 70, centerY+9, true, 20);
+
+    ctx.fillStyle = COLORS.subtitle;
+    ctx.font = "18px sans-serif";
+    ctx.fillText("Time Spoken", metricsColX + 235, centerY - 20);
+
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText(formatDuration(Number(stats.timeSpoken ?? 0)), metricsColX + 235, centerY + 8);
+
+    ctx.textBaseline = "alphabetic";
+
+    return canvas.encode("png");
 }
 
 async function buildMemberStatsCard(stats) {
@@ -220,7 +295,7 @@ async function buildMemberStatsCard(stats) {
 
     drawDelta(ctx, stats.sessionDelta,
         metrics.x + SPACING + 75,
-        metrics.y + SPACING,
+        metrics.y + SPACING+52,
         true
     );
 
@@ -231,8 +306,8 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.sessionDelta,
-        metrics.x + SPACING + 75,
-        metrics.y + SPACING + 100, 
+        metrics.x + SPACING + 25,
+        metrics.y + SPACING + 100+52,
         false
     );
 
@@ -341,4 +416,6 @@ async function buildMemberStatsCard(stats) {
 
 module.exports = {
     buildMemberStatsCard,
+    buildSpeechTallyCardForMember,
+    formatDuration
 }

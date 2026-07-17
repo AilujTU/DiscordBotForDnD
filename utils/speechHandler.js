@@ -207,7 +207,7 @@ async function buildSpeechTallyBoard(guild, channel, tracker, isEnded = false) {
 
         const card = await buildSpeechTallyCardForMember({
             avatar: member.displayAvatarURL({ extension: "png" }),
-            username: member.user.username,
+            username: member.displayName,
             position: currentPosition,
             positionDelta: positionDelta,
             percentage: percentage,

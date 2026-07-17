@@ -181,7 +181,7 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.fillText(`#${stats.position}`, leftColX, centerY);
 
     ctx.font = "bold 24px sans-serif";
-    drawDelta(ctx, stats.positionDelta,leftColX + 40, centerY+9, false, 24);
+    drawDelta(ctx, stats.positionDelta,leftColX + 55, centerY+9, false, 24);
 
     if (stats.avatar) {
 
@@ -223,6 +223,47 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.fillText(formatDuration(Number(stats.timeSpoken ?? 0)), metricsColX + 235, centerY + 8);
 
     ctx.textBaseline = "alphabetic";
+
+    return canvas.encode("png");
+}
+
+async function buildSpeechTallyBoardCard({ title, channelName, sessionLength, cards = [] }) {
+    const cardWidth = 900;
+    const cardHeight = 180;
+    const padding = 24;
+    const gap = 16;
+    const headerHeight = 140;
+    const canvasWidth = cardWidth + padding * 2;
+    const canvasHeight = headerHeight + (cards.length === 0
+        ? cardHeight + padding
+        : cards.length * cardHeight + Math.max(0, cards.length - 1) * gap + padding);
+
+    const canvas = createCanvas(canvasWidth, canvasHeight);
+    const ctx = canvas.getContext("2d");
+
+    drawCard(ctx, 0, 0, canvasWidth, canvasHeight);
+
+    ctx.fillStyle = COLORS.title;
+    ctx.font = "bold 36px sans-serif";
+    ctx.fillText(title, padding, 44);
+
+    ctx.fillStyle = COLORS.subtitle;
+    ctx.font = "20px sans-serif";
+    ctx.fillText(`Channel: ${channelName}`, padding, 84);
+    ctx.fillText(`Session Length: ${sessionLength}`, padding, 114);
+
+    if (cards.length === 0) {
+        ctx.fillStyle = COLORS.title;
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillText("No speaking activity recorded.", padding, headerHeight + 40);
+        return canvas.encode("png");
+    }
+
+    for (const [index, cardBuffer] of cards.entries()) {
+        const cardImage = await loadImage(cardBuffer);
+        const y = headerHeight + index * (cardHeight + gap);
+        ctx.drawImage(cardImage, padding, y, cardWidth, cardHeight);
+    }
 
     return canvas.encode("png");
 }
@@ -417,5 +458,6 @@ async function buildMemberStatsCard(stats) {
 module.exports = {
     buildMemberStatsCard,
     buildSpeechTallyCardForMember,
+    buildSpeechTallyBoardCard,
     formatDuration
 }

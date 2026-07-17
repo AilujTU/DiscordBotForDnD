@@ -88,6 +88,21 @@ async function migrate() {
         });
     }
 
+    const hasSessionDataTable = await db.schema.hasTable('sessionData');
+
+    if (!hasSessionDataTable) {
+        await db.schema.createTable('sessionData', table => {
+            table.increments('id').primary;
+            table.integer('trackedMember_id')
+                .unsigned()
+                .notNullable()
+                .references('id')
+                .inTable('trackedMember');
+            table.integer('talkDuration');
+            table.integer('totalDuration');
+        });
+    }
+
     console.log('Database successfully migrated.');
     await db.destroy();
 }

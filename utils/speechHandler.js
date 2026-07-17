@@ -1,8 +1,7 @@
 const db = require('../db/knex');
-const { EmbedBuilder, MessageFlags, ChannelFlags, ChannelType, Message, AttachmentBuilder } = require('discord.js');
-const colors = require('./colors');
-const { joinVoiceChannel, entersState, VoiceConnectionStatus, } = require('@discordjs/voice');
-const { buildMemberStatsCard, buildSpeechTallyCardForMember, formatDuration } = require('./cardBuilder');
+const { MessageFlags, AttachmentBuilder } = require('discord.js');
+const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
+const { buildMemberStatsCard, buildSpeechTallyCardForMember, buildSpeechTallyBoardCard, formatDuration } = require('./cardBuilder');
 
 const activeTrackers = new Map();
 
@@ -173,7 +172,7 @@ async function buildSpeechTallyBoard(guild, channel, tracker, isEnded = false) {
     const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
 
-    const attachments = [];
+    const tallyCards = [];
 
     for (const [index, [userId, talkTime]] of sortedStats.entries()) {
         let member;
@@ -215,37 +214,22 @@ async function buildSpeechTallyBoard(guild, channel, tracker, isEnded = false) {
             timeSpoken: talkTime
         });
 
-        attachments.push(new AttachmentBuilder(card, { name: `speech-tally-${index + 1}.png` }));
+        tallyCards.push(card);
 
         tracker.lastTallyPosition.set(userId, currentPosition);
         tracker.lastTallyPercentage.set(userId, percentage);
     }
 
-    const embed = new EmbedBuilder()
-        .setTitle(`Speech Participation Statistics`)
-        .setDescription(attachments.length > 0 ? 'Speaking activity recorded.' : 'No speaking activity recorded.'
-        )
-        .addFields({
-            name: 'Channel',
-            value: `${channel.name}`,
-            inline: true,
-        })
-        .addFields({
-            name: 'Session Length',
-            value: formatDuration(totalSessionTime),
-            inline: true,
-        })
-        .setTimestamp();
+    const board = await buildSpeechTallyBoardCard({
+        title: 'Speech Participation Statistics',
+        channelName: channel.name,
+        sessionLength: formatDuration(totalSessionTime),
+        cards: tallyCards,
+    });
 
-    if (isEnded) {
-        embed.setFooter({ text: 'Tracking finished' });
-        embed.setColor(colors.combat_inactive);
-    } else {
-        embed.setFooter({ text: 'Tracking active' });
-        embed.setColor(colors.combat_active);
-    }
-
-    return { embed, attachments };
+    return {
+        attachment: new AttachmentBuilder(board, { name: 'speech-tally-board.png' })
+    };
 }
 
 async function stopTracking(channel) {
@@ -290,7 +274,7 @@ async function handleSpeechTrackerTally(interaction) {
     }
 
     await interaction.deferReply({ content: 'Searching for the truth...' });
-    const { embed, attachments } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
+    const { attachment } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
 
     if (isEnded) {
         finalizeTracker(tracker);
@@ -298,8 +282,7 @@ async function handleSpeechTrackerTally(interaction) {
     }
 
     return await interaction.editReply({
-        embeds: [embed],
-        files: attachments
+        files: [attachment]
     });
 }
 
@@ -405,6 +388,9 @@ async function updateStatsInStorage(channel) {
 
         // update table speechYearlyStats   
         await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count - 1);
+
+        // update session data
+        await updateSessionData(trackedMember.id,talkTime,totalSessionTime);
     }
 
 }
@@ -500,6 +486,14 @@ async function updateSpeechYearlyStats(id, month, percentage, session_count) {
     }
 }
 
+async function updateSessionData(id, duration, total) {
+    await db('sessionData').insert({
+        trackedMember_id: id,
+        talkDuration: duration,
+        totalDuration: total
+    });
+}
+
 async function handleMemberStats(interaction) {
     const member = interaction.options.getMember('user');
     const channel = interaction.options.getChannel('channel');
@@ -567,18 +561,35 @@ async function computeStatisticsForChannel(member, id) {
     // format yearly statistics
     const rowsInYearly = await db('speechYearlyStat')
         .where({ trackedMember_id: id })
-        .select('month', 'percentage');
+        .select('month', 'percentage')
+        .orderBy('month', 'asc');
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     let monthly = [];
 
     for (let i = 0; i < monthly.length; i++) {
-        monthly[i] = { month: m[i], percentage: rowsInYearly[i] ? rowsInYearly[i] : 0};
+        monthly[i] = {month: m[i], percentage: 0};
+    }
+
+    for (const [i, percent] of rowsInYearly) {
+        monthly[i] = {month: m[i], percentage: percent};
     }
 
     const avg = monthly.reduce((s, m) => s + m.percentage, 0) / monthly.length;
     const variance = monthly.reduce((s, m) => s + Math.pow(m.percentage - avg, 2), 0) / monthly.length;
     const stdDev = Math.sqrt(variance);
     const consistency = Math.max(0, 100 - stdDev * 2);
+
+    // format session data
+    const rowsInSessionData = await db('sessionData')
+        .where({trackedMember_id: id})
+        .select('id','talkDuration','totalDuration')
+        .orderBy('id','asc');
+
+    let sessionData = [];
+    
+    for (let i = 0; i < rowsInSessionData.length; i++) {
+        sessionData[i] = {talkDuration: rowsInSessionData[i].talkDuration, totalDuration: rowsInSessionData[i].totalDuration};
+    }
 
     return {
         username: member.displayName,
@@ -593,6 +604,7 @@ async function computeStatisticsForChannel(member, id) {
         placements,
         monthly,
         consistency,
+        sessionData
     };
 }
 

@@ -106,11 +106,10 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 		finalizeTracker(tracker);
 
-		const {embed, attachments} = await buildSpeechTallyBoard(channel.guild, channel, tracker);
+		const {attachment} = await buildSpeechTallyBoard(channel.guild, channel, tracker);
 
 		await channel.send({
-			embeds: [embed],
-			files: attachments
+			files: [attachment]
 		});
 
 		await stopTracking(channel);

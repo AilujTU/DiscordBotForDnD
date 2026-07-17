@@ -571,8 +571,8 @@ async function computeStatisticsForChannel(member, id) {
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     let monthly = [];
 
-    for (let i = 0; i < rowsInYearly.length; i++) {
-        monthly[i] = { month: m[i], percentage: rowsInYearly[i].percentage };
+    for (let i = 0; i < monthly.length; i++) {
+        monthly[i] = { month: m[i], percentage: rowsInYearly[i] ? rowsInYearly[i] : 0};
     }
 
     const avg = monthly.reduce((s, m) => s + m.percentage, 0) / monthly.length;

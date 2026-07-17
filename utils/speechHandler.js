@@ -390,7 +390,7 @@ async function updateStatsInStorage(channel) {
         await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count - 1);
 
         // update session data
-        await updateSessionData(trackedMember.id,talkTime,totalSessionTime);
+        await updateSessionData(trackedMember.id, talkTime, totalSessionTime);
     }
 
 }
@@ -564,14 +564,17 @@ async function computeStatisticsForChannel(member, id) {
         .select('month', 'percentage')
         .orderBy('month', 'asc');
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    let monthly = [];
 
-    for (let i = 0; i < monthly.length; i++) {
-        monthly[i] = {month: m[i], percentage: 0};
-    }
+    const monthly = Array.from({ length: 12 }, (_, index) => ({
+        month: m[index],
+        percentage: 0
+    }));
 
-    for (const [i, percent] of rowsInYearly) {
-        monthly[i] = {month: m[i], percentage: percent};
+    for (const row of rowsInYearly) {
+        const mIndex = Number(row.month) - 1;
+        if (Number.isInteger(mIndex) && mIndex >= 0 && mIndex < monthly.length) {
+            monthly[mIndex] = { month: m[mIndex], percentage: row.percentage };
+        }
     }
 
     const avg = monthly.reduce((s, m) => s + m.percentage, 0) / monthly.length;
@@ -581,14 +584,14 @@ async function computeStatisticsForChannel(member, id) {
 
     // format session data
     const rowsInSessionData = await db('sessionData')
-        .where({trackedMember_id: id})
-        .select('id','talkDuration','totalDuration')
-        .orderBy('id','asc');
+        .where({ trackedMember_id: id })
+        .select('id', 'talkDuration', 'totalDuration')
+        .orderBy('id', 'asc');
 
     let sessionData = [];
-    
+
     for (let i = 0; i < rowsInSessionData.length; i++) {
-        sessionData[i] = {talkDuration: rowsInSessionData[i].talkDuration, totalDuration: rowsInSessionData[i].totalDuration};
+        sessionData[i] = { talkDuration: rowsInSessionData[i].talkDuration, totalDuration: rowsInSessionData[i].totalDuration };
     }
 
     return {

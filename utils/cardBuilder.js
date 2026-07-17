@@ -206,7 +206,7 @@ async function buildSpeechTallyCardForMember(stats) {
 
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = "18px sans-serif";
-    ctx.fillText("Percentage", metricsColX, centerY - 20);
+    ctx.fillText("Participation", metricsColX, centerY - 20);
 
     ctx.fillStyle = COLORS.title;
     ctx.font = "bold 26px sans-serif";
@@ -352,7 +352,7 @@ async function buildMemberStatsCard(stats) {
         false
     );
 
-    drawMetric(ctx, "All Time",
+    drawMetric(ctx, "Average Percentage",
         `${stats.allTime.toFixed(1)}%`,
         metrics.x + SPACING,
         metrics.y + SPACING + 200

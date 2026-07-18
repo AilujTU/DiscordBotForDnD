@@ -20,7 +20,7 @@ const COLORS = {
 
     subtitle: "#AAAAAA",
 
-    accent: "#460379",
+    accent: "#3B82F6",
 
     positive: "#57F287",
 
@@ -396,11 +396,8 @@ async function buildMemberStatsCard(stats) {
 
                 borderColor: COLORS.accent,
                 backgroundColor: COLORS.accent,
-
                 pointRadius: 5,
-
                 borderWidth: 4,
-
                 fill: true
             }]
         },

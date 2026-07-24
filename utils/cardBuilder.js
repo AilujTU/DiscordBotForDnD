@@ -20,7 +20,11 @@ const COLORS = {
 
     subtitle: "#AAAAAA",
 
-    accent: "#3B82F6",
+    accent1: "#f6ab3b",
+
+    accent2: "#3B82F6",
+
+    accent3: "#3B82F6B6",
 
     positive: "#57F287",
 
@@ -134,7 +138,7 @@ function drawPositionDistribution(ctx, placements, x, given_y) {
 
         const w = (p.count / max) * width;
 
-        ctx.fillStyle = COLORS.accent;
+        ctx.fillStyle = COLORS.accent1;
 
         roundRect(ctx, x + 45, y - 15, w, 18, 18);
         ctx.fill();
@@ -181,7 +185,7 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.fillText(`#${stats.position}`, leftColX, centerY);
 
     ctx.font = "bold 24px sans-serif";
-    drawDelta(ctx, stats.positionDelta,leftColX + 55, centerY+9, false, 24);
+    drawDelta(ctx, stats.positionDelta, leftColX + 55, centerY + 9, false, 24);
 
     if (stats.avatar) {
 
@@ -212,7 +216,7 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.font = "bold 26px sans-serif";
     ctx.fillText(`${Number(stats.percentage ?? 0).toFixed(1)}%`, metricsColX, centerY + 8);
 
-    drawDelta(ctx, stats.percentageDelta, metricsColX + 70, centerY+9, true, 20);
+    drawDelta(ctx, stats.percentageDelta, metricsColX + 70, centerY + 9, true, 20);
 
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = "18px sans-serif";
@@ -273,16 +277,6 @@ async function buildMemberStatsCard(stats) {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext("2d");
 
-    /* LAYOUT:
-    ----------------------
-    |   title + avatar   |
-    ----------------------
-    |       |graph       |
-    |metrics|------------|
-    |       |distribution|
-    ---------------------
-
-    */
     drawCard(ctx, 0, 0, WIDTH, HEIGHT);
     //metrics - left till bottom
     const metrics = {
@@ -336,7 +330,7 @@ async function buildMemberStatsCard(stats) {
 
     drawDelta(ctx, stats.sessionDelta,
         metrics.x + SPACING + 75,
-        metrics.y + SPACING+52,
+        metrics.y + SPACING + 52,
         true
     );
 
@@ -347,8 +341,8 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.sessionDelta,
-        metrics.x + SPACING + 25,
-        metrics.y + SPACING + 100+52,
+        metrics.x + SPACING + 75,
+        metrics.y + SPACING + 100 + 52,
         false
     );
 
@@ -384,64 +378,7 @@ async function buildMemberStatsCard(stats) {
 
     ctx.fillText("Position Distribution", distribution.x + SPACING, distribution.y + 2 * SPACING);
 
-    const participation = await chartRenderer.renderToBuffer({
-
-        type: "line",
-
-        data: {
-            labels: stats.monthly.map(x => x.month),
-
-            datasets: [{
-                data: stats.monthly.map(x => x.percentage),
-
-                borderColor: COLORS.accent,
-                backgroundColor: COLORS.accent,
-                pointRadius: 5,
-                borderWidth: 4,
-                fill: true
-            }]
-        },
-
-        options: {
-            responsive: false,
-            animation: false,
-
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-
-            elements: {
-                line: {
-                    tension: 0.4,
-                    borderWidth: 4
-                },
-                point: {
-                    radius: 4,
-                    hoverRadius: 5
-                }
-            },
-
-            scales: {
-                x: {
-                    grid: {
-                        display: false
-                    }
-                },
-
-                y: {
-                    min: 0,
-                    max: 100,
-                    ticks: {
-                        stepSize: 10,
-                        callback: v => `${v}%`
-                    }
-                }
-            }
-        }
-
-    });
+    const participation = await buildParticipationChart(stats.sessionData);
 
     const participationImg = await loadImage(participation);
 
@@ -451,6 +388,81 @@ async function buildMemberStatsCard(stats) {
 
     return canvas.encode("png");
 }
+
+async function buildParticipationChart(input = []) {
+  const labels = input.map((_, index) => `s${index + 1}`);
+  const maxTalk = Math.max(...input.map(row => row.talkDuration), 0);
+
+  const data = {
+    labels,
+    datasets: [{
+      type: 'bar',
+      data: input.map(row => row.talkDuration),
+      borderColor: COLORS.accent2,
+      backgroundColor: COLORS.accent3,
+      yAxisID: 'y',
+      order: 2
+    }, {
+      type: 'line',
+      data: input.map(row =>
+        row.totalDuration
+          ? Number(((row.talkDuration / row.totalDuration) * 100).toFixed(1))
+          : 0
+      ),
+      fill: false,
+      borderColor: COLORS.accent1,
+      tension: 0.1,
+      yAxisID: 'y1',
+      order: 1
+    }]
+  };
+
+  const participation = await chartRenderer.renderToBuffer({
+    data,
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { display: false }
+        },
+        y: {
+          position: 'right',
+          min: 0,
+          max: Math.max(maxTalk, 1800000),
+          ticks: {
+            stepSize: Math.max(600000, Math.ceil(maxTalk / 5 / 600000) * 600000),
+            callback: v => `${Math.round(v / 60000)}m`
+          }
+        },
+        y1: {
+          position: 'left',
+          min: 0,
+          suggestedMax: 100,
+          ticks: {
+            stepSize: 10,
+            callback: v => `${v}%`
+          }
+        }
+      }
+    }
+  });
+
+  return participation;
+}
+
+async function buildChartsCard(chart) {
+    const canvas = createCanvas(900, 300)
+    const ctx = canvas.getContext("2d");
+
+    drawCard(ctx, 0, 0, canvas.width, canvas.height);
+
+    const chartImg = await loadImage(chart);
+
+    ctx.drawImage(chartImg,50,50)
+
+    return canvas.encode("png")
+}
+
 
 module.exports = {
     buildMemberStatsCard,

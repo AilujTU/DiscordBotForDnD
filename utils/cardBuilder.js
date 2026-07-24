@@ -390,77 +390,82 @@ async function buildMemberStatsCard(stats) {
 }
 
 async function buildParticipationChart(input = []) {
-  const labels = input.map((_, index) => `s${index + 1}`);
-  const maxTalk = Math.max(...input.map(row => row.talkDuration), 0);
 
-  const data = {
-    labels,
-    datasets: [{
-      type: 'bar',
-      data: input.map(row => row.talkDuration),
-      borderColor: COLORS.accent2,
-      backgroundColor: COLORS.accent3,
-      yAxisID: 'y',
-      order: 2
-    }, {
-      type: 'line',
-      data: input.map(row =>
-        row.totalDuration
-          ? Number(((row.talkDuration / row.totalDuration) * 100).toFixed(1))
-          : 0
-      ),
-      fill: false,
-      borderColor: COLORS.accent1,
-      tension: 0.1,
-      yAxisID: 'y1',
-      order: 1
-    }]
-  };
+    if (!Array.isArray(input) || input.length === 0) {
+        const placeholderCanvas = createCanvas(800, 300);
+        const placeholderCtx = placeholderCanvas.getContext('2d');
 
-  const participation = await chartRenderer.renderToBuffer({
-    data,
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          grid: { display: false }
-        },
-        y: {
-          position: 'right',
-          min: 0,
-          max: Math.max(maxTalk, 1800000),
-          ticks: {
-            stepSize: Math.max(600000, Math.ceil(maxTalk / 5 / 600000) * 600000),
-            callback: v => `${Math.round(v / 60000)}m`
-          }
-        },
-        y1: {
-          position: 'left',
-          min: 0,
-          suggestedMax: 100,
-          ticks: {
-            stepSize: 10,
-            callback: v => `${v}%`
-          }
-        }
-      }
+        placeholderCtx.fillStyle = COLORS.title;
+        placeholderCtx.font = 'bold 28px sans-serif';
+        placeholderCtx.textAlign = 'center';
+        placeholderCtx.textBaseline = 'middle';
+        placeholderCtx.fillText('No session data recorded yet', 400, 150);
+
+        placeholderCtx.textAlign = 'left';
+        placeholderCtx.textBaseline = 'alphabetic';
+
+        return placeholderCanvas.encode('png');
     }
-  });
 
-  return participation;
-}
 
-async function buildChartsCard(chart) {
-    const canvas = createCanvas(900, 300)
-    const ctx = canvas.getContext("2d");
+    const labels = input.map((_, index) => `s${index + 1}`);
+    const maxTalk = Math.max(...input.map(row => row.talkDuration), 0);
 
-    drawCard(ctx, 0, 0, canvas.width, canvas.height);
+    const data = {
+        labels,
+        datasets: [{
+            type: 'bar',
+            data: input.map(row => row.talkDuration),
+            borderColor: COLORS.accent2,
+            backgroundColor: COLORS.accent3,
+            yAxisID: 'y',
+            order: 2
+        }, {
+            type: 'line',
+            data: input.map(row =>
+                row.totalDuration
+                    ? Number(((row.talkDuration / row.totalDuration) * 100).toFixed(1))
+                    : 0
+            ),
+            fill: false,
+            borderColor: COLORS.accent1,
+            tension: 0.1,
+            yAxisID: 'y1',
+            order: 1
+        }]
+    };
 
-    const chartImg = await loadImage(chart);
+    const participation = await chartRenderer.renderToBuffer({
+        data,
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    grid: { display: false }
+                },
+                y: {
+                    position: 'right',
+                    min: 0,
+                    max: Math.max(maxTalk, 1800000),
+                    ticks: {
+                        stepSize: Math.max(600000, Math.ceil(maxTalk / 5 / 600000) * 600000),
+                        callback: v => `${Math.round(v / 60000)}m`
+                    }
+                },
+                y1: {
+                    position: 'left',
+                    min: 0,
+                    suggestedMax: 100,
+                    ticks: {
+                        stepSize: 10,
+                        callback: v => `${v}%`
+                    }
+                }
+            }
+        }
+    });
 
-    ctx.drawImage(chartImg,50,50)
-
-    return canvas.encode("png")
+    return participation;
 }
 
 

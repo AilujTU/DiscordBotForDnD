@@ -22,9 +22,9 @@ const COLORS = {
 
     accent1: "#f6ab3b",
 
-    accent2: "#3B82F6",
+    accent2: "#14B8A6",
 
-    accent3: "#3B82F6B6",
+    accent3: "rgba(45, 212, 191, 0.35)",
 
     positive: "#57F287",
 
@@ -75,15 +75,15 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
     );
 }
 
-function drawCard(ctx, x, y, w, h) {
+function drawCard(ctx, x, y, w, h, isFirst = false) {
 
     ctx.fillStyle = COLORS.card;
     roundRect(ctx, x, y, w, h, 18);
     ctx.fill();
 
 
-    ctx.strokeStyle = COLORS.border;
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = isFirst ? "#D4AF37" : COLORS.border;
+    ctx.lineWidth = isFirst ? 4 : 2;
     ctx.stroke();
 }
 
@@ -172,7 +172,7 @@ async function buildSpeechTallyCardForMember(stats) {
 
     */
 
-    drawCard(ctx, 0, 0, canvas.width, canvas.height);
+    drawCard(ctx, 0, 0, canvas.width, canvas.height, Number(stats.position) === 1);
 
     const leftColX = 30;
     const avatarColX = 200;

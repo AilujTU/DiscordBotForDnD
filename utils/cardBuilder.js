@@ -340,7 +340,7 @@ async function buildMemberStatsCard(stats) {
         metrics.y + SPACING + 100
     );
 
-    drawDelta(ctx, stats.sessionDelta,
+    drawDelta(ctx, stats.positionDelta,
         metrics.x + SPACING + 75,
         metrics.y + SPACING + 100 + 52,
         false

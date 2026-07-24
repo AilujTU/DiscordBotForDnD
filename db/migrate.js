@@ -92,7 +92,7 @@ async function migrate() {
 
     if (!hasSessionDataTable) {
         await db.schema.createTable('sessionData', table => {
-            table.increments('id').primary;
+            table.increments('id').primary();
             table.integer('trackedMember_id')
                 .unsigned()
                 .notNullable()

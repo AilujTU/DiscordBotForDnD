@@ -184,7 +184,7 @@ async function buildSpeechTallyBoard(guild, channel, tracker, isEnded = false) {
         }
 
         const totalTalkTime = [...stats.values()].reduce((a, b) => a + b, 0);
-        const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
+        const percentage = totalSessionTime > 0 ? Number(((talkTime / totalTalkTime) * 100).toFixed(1)) : 0;
 
         const currentPosition = index + 1;
 
@@ -246,7 +246,7 @@ async function stopTracking(channel) {
     const isPresistentChannel = await db('trackedChannel')
         .select('keep')
         .where({
-            channel_Id: channelId
+            channel_id: channelId
         }).first();
 
     if (isPresistentChannel) {
@@ -370,7 +370,7 @@ async function updateStatsInStorage(channel) {
     for (const [i, [memberId, talkTime]] of sortedStats.entries()) {
         // update table trackedMember
         console.log(`Talk time: ${talkTime}`);
-        const percentage = totalSessionTime > 0 ? ((talkTime / totalTalkTime) * 100).toFixed(1) : 0;
+        const percentage = totalSessionTime > 0 ? Number(((talkTime / totalTalkTime) * 100).toFixed(1)) : 0;
 
 
         console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
@@ -405,7 +405,7 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
         .first();
 
     if (userEntryExists) {
-        const allTimePercent = (userEntryExists.all_time_percentage * userEntryExists.session_count + percentage) / (userEntryExists.session_count + 1);
+        const allTimePercent = (Number(userEntryExists.all_time_percentage ?? 0) * Number(userEntryExists.session_count ?? 0) + percentage) / (Number(userEntryExists.session_count ?? 0) + 1);
 
         await db('trackedMember')
             .where({ id: userEntryExists.id })

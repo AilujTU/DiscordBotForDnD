@@ -3,7 +3,7 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
 const { token } = require('./config.json');
 const db = require('./db/knex');
-const { activeTrackers, finalizeTracker, stopTracking, buildSpeechStatsEmbed, startTracking } = require('./utils');
+const { activeTrackers, finalizeTracker, stopTracking, buildSpeechTallyBoard, startTracking } = require('./utils');
 
 const client = new Client({
 	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates],
@@ -106,13 +106,13 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 		finalizeTracker(tracker);
 
-		const embed = await buildSpeechStatsEmbed(channel.guild, channel, tracker);
+		const {attachment} = await buildSpeechTallyBoard(channel.guild, channel, tracker);
 
 		await channel.send({
-			embeds: [embed]
+			files: [attachment]
 		});
 
-		await stopTracking(channel.id);
+		await stopTracking(channel);
 	}
 });
 

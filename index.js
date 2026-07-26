@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
+const sqlite3 = require('better-sqlite3');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials, AttachmentBuilder, Attachment } = require('discord.js');
 const { token } = require('./config.json');
 const db = require('./db/knex');
 const { activeTrackers, finalizeTracker, stopTracking, buildSpeechTallyBoard, startTracking } = require('./utils');
@@ -89,6 +90,32 @@ client.on('messageDelete', async message => {
 	}
 });
 
+async function exportSeesionDataCsv(guild) {
+	const rows = await db('sessionData as sd')
+		.leftJoin('trackedMember as tm', 'sd.trackedMember_id', 'tm.id')
+		.select('tm.member_id','sd.talkDuration', 'sd.totalDuration');
+	
+	const lines = ['member,talkDuration,totalDuration'];
+
+	for (const row of rows) {
+		let memberName = row. member_id || 'unknown';
+
+		try {
+			const member = await guild.members.fetch(row.member_id);
+			memberName = member.displayName;
+		} catch {}
+
+		const escape = value => `${String(value ?? '').replace(/"/g,'""')}`;
+
+		lines.push(`${escape(memberName)}, ${escape(row.talkDuration)},${escape(row.totalDuration)}`);
+
+	}
+
+	const filePath = path.join(__dirname, 'sessionData.csv');
+	fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
+	return filePath;
+}
+
 client.on('voiceStateUpdate', async (oldState, newState) => {
 	const channel = oldState.channel;
 	if (!channel)
@@ -108,11 +135,16 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 		const {attachment} = await buildSpeechTallyBoard(channel.guild, channel, tracker);
 
-		await channel.send({
-			files: [attachment]
-		});
-
 		await stopTracking(channel);
+
+		const csvPath = await exportSeesionDataCsv(channel.guild);
+
+		await channel.send({
+			files: [
+				attachment,
+				new AttachmentBuilder(csvPath, {name: 'sessionData.csv'})
+			]
+		});
 	}
 });
 

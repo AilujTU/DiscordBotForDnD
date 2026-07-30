@@ -90,7 +90,7 @@ client.on('messageDelete', async message => {
 	}
 });
 
-async function exportSeesionDataCsv(guild) {
+async function exportSessionDataCsv(guild) {
 	const rows = await db('sessionData as sd')
 		.leftJoin('trackedMember as tm', 'sd.trackedMember_id', 'tm.id')
 		.select('tm.member_id','sd.talkDuration', 'sd.totalDuration');
@@ -137,7 +137,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 		await stopTracking(channel);
 
-		const csvPath = await exportSeesionDataCsv(channel.guild);
+		const csvPath = await exportSessionDataCsv(channel.guild);
 
 		await channel.send({
 			files: [

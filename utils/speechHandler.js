@@ -366,6 +366,10 @@ async function updateStatsInStorage(channel) {
     console.log(`Month: ${month}`);
     console.log('reached updateStatsInStorage, right before loop');
 
+    // find last session_id
+    const latest = await db('sessionData').max('session_id as session_id').first();
+    const nextSessionId = Number(latest?.session_id ?? 0) +1;
+
     // iterate over all members that have stats
     for (const [i, [memberId, talkTime]] of sortedStats.entries()) {
         // update table trackedMember
@@ -390,7 +394,7 @@ async function updateStatsInStorage(channel) {
         await updateSpeechYearlyStats(trackedMember.id, month, percentage, trackedMember.session_count - 1);
 
         // update session data
-        await updateSessionData(trackedMember.id, talkTime, totalSessionTime);
+        await updateSessionData(trackedMember.id, nextSessionId, talkTime, totalSessionTime);
     }
 
 }
@@ -486,9 +490,10 @@ async function updateSpeechYearlyStats(id, month, percentage, session_count) {
     }
 }
 
-async function updateSessionData(id, duration, total) {
+async function updateSessionData(id, session_id, duration, total) {
     await db('sessionData').insert({
         trackedMember_id: id,
+        session_id: session_id,
         talkDuration: duration,
         totalDuration: total
     });

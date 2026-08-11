@@ -100,6 +100,7 @@ async function migrate() {
                 .inTable('trackedMember');
             table.integer('talkDuration');
             table.integer('totalDuration');
+            table.integer('session_id');
         });
     }
 

@@ -91,7 +91,12 @@ client.on('messageDelete', async message => {
 });
 
 async function exportSessionDataCsv(guild) {
+	const latest = await db('sessionData').max('session_id as session_id').first();
+	const session_id = Number(latest?.session_id ?? 0);
+	
+
 	const rows = await db('sessionData as sd')
+		.where({session_id: session_id})
 		.leftJoin('trackedMember as tm', 'sd.trackedMember_id', 'tm.id')
 		.select('tm.member_id','sd.talkDuration', 'sd.totalDuration');
 	

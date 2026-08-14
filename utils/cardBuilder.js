@@ -441,7 +441,9 @@ async function buildParticipationChart(input = []) {
             plugins: { legend: { display: false } },
             scales: {
                 x: {
-                    grid: { display: false }
+                    grid: { display: false },
+                    ticks: {display: false},
+                    offset: false
                 },
                 y: {
                     position: 'right',

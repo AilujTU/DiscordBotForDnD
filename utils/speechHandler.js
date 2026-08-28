@@ -536,7 +536,7 @@ async function computeStatisticsForChannel(member, id) {
     const sessionCount = entryOfMember.session_count;
     const lastPosition = entryOfMember.last_session_position;
     const currentPosition = entryOfMember.this_session_position;
-    const positionDelta = currentPosition - lastPosition;
+    const positionDelta = lastPosition - currentPosition;
     const lastSession = entryOfMember.last_session_percentage;
     const currentSession = entryOfMember.this_session_percentage;
     const sessionDelta = currentSession - lastSession;

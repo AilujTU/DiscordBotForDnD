@@ -448,9 +448,9 @@ async function buildParticipationChart(input = []) {
                 y: {
                     position: 'right',
                     min: 0,
-                    max: Math.max(maxTalk, 1800000),
+                    max: 9000000,
                     ticks: {
-                        stepSize: Math.max(600000, Math.ceil(maxTalk / 5 / 600000) * 600000),
+                        stepSize: 900000, // = 15min
                         callback: v => `${Math.round(v / 60000)}m`
                     }
                 },

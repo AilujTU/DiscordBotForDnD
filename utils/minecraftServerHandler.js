@@ -1,6 +1,32 @@
+const { EmbedBuilder } = require('discord.js');
 const { minecraftServerAdress } = require('../config.json');
 
+async function handleActivePlayerList(interaction) {
+    await interaction.deferReply()
+    const server = await checkMinecraftServerStatus(interaction.client);
+    const status = server.online? '**Online** 🟢 ' : (server.error? '**Unavailable** ⚠️ ' : '**Offline** 🔴 ');
 
+    let description = 'Something went wrong while looking up the active players.';
+    if (server.online) {
+        description = server.playersOnline > 0? server.players.map(player => `- ${player}`).join('\n') : '*No players active currently.*';
+    } else {
+        description = server.error? '*The current server status couldn\'t be retrieved.*' : '*The server is currently offline.*';
+    }
+    
+
+    const embed = new EmbedBuilder()
+        .setTitle('🎮 Minecraft Server')
+        .addFields({
+            name: `${status} · Active Players 👥 · (${server.playersOnline}/${server.playersMax})`,
+            value: description
+        })
+        .setTimestamp();
+
+    return await interaction.editReply({
+        embeds: [embed]
+        }   
+    );
+}
 
 async function checkMinecraftServerStatus() {
     if (!minecraftServerAdress) {

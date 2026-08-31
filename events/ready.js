@@ -1,5 +1,5 @@
 const { Events } = require('discord.js');
-const {restorePersistentTrackers} = require('../utils');
+const {restorePersistentTrackers, updateMinecraftPresence} = require('../utils');
 
 module.exports = {
 	name: Events.ClientReady,
@@ -7,5 +7,6 @@ module.exports = {
 	async execute(client) {
 		console.log(`Ready! Logged in as ${client.user.tag}`);
 		await restorePersistentTrackers(client);
+		await updateMinecraftPresence();
 	},
 };

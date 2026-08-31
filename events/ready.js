@@ -7,6 +7,7 @@ module.exports = {
 	async execute(client) {
 		console.log(`Ready! Logged in as ${client.user.tag}`);
 		await restorePersistentTrackers(client);
-		await updateMinecraftPresence();
+		await updateMinecraftPresence(client);
+		setInterval(() => updateMinecraftPresence(client), 60_000);
 	},
 };

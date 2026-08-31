@@ -68,7 +68,6 @@ let savedPresenceName = null;
 
 async function updateMinecraftPresence(client) {
     const server = await checkMinecraftServerStatus();
-    console.log(server); //TODO: Delete if working correctly
 
     let presenceName;
     if (!server.online) {

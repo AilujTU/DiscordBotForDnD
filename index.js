@@ -134,7 +134,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 
 	if (channelIsEmpty) {
-		console.log(`${channel.name} is empty.`); // TODO: delete once working & tested
 
 		finalizeTracker(tracker);
 
@@ -183,8 +182,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 	}
 
 	await startTracking(channel);
-
-	console.log(`Started observing ${channel.name} [PERSISTENT]`); // TODO: delete once working & tested
 });
 
 client.login(token);

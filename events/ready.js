@@ -6,6 +6,6 @@ module.exports = {
 	once: true,
 	async execute(client) {
 		console.log(`Ready! Logged in as ${client.user.tag}`);
-		await restorePersistentTrackers(client); // TODO: delete if fully finished w/ voice handler
+		await restorePersistentTrackers(client);
 	},
 };

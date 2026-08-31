@@ -104,7 +104,6 @@ async function startTracking(channel) {
             return;
 
         tracker.speakingUsers.set(userId, Date.now());
-        console.log(`${userId} started speaking.`); // TODO: delete once working & tested
     });
 
     connection.receiver.speaking.on('end', async userId => {
@@ -119,7 +118,6 @@ async function startTracking(channel) {
         const current = tracker.stats.get(userId) ?? 0;
 
         tracker.stats.set(userId, current + duration);
-        console.log(`${userId} spoke for ${duration}ms.`); // TODO: delete once working & tested
     });
 }
 
@@ -129,14 +127,6 @@ function addBotToChannel(channel) {
         guildId: channel.guild.id,
         adapterCreator: channel.guild.voiceAdapterCreator,
         selfDeaf: false,
-    });
-
-    connection.on(VoiceConnectionStatus.Ready, () => {
-        console.log(`Connected to ${channel.name}`); // TODO: delete once working & tested
-    });
-
-    connection.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log(`Disconnected from ${channel.name}`); // TODO: delete once working & tested
     });
 
     return connection;
@@ -341,8 +331,6 @@ async function restorePersistentTrackers(client) {
         await db('trackedChannel')
             .where({ channel_id: channelId })
             .update({ active: true });
-
-        console.log(`Restored persistent tracking for ${channel.name}`);
     }
 
 }

@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { minecraftServerAdress } = require('../config.json');
+const colors = require('./colors');
 
 async function handleActivePlayerList(interaction) {
     await interaction.deferReply()
@@ -8,9 +9,9 @@ async function handleActivePlayerList(interaction) {
 
     let description = 'Something went wrong while looking up the active players.';
     if (server.online) {
-        description = server.playersOnline > 0? server.players.map(player => `- ${player}`).join('\n') : '*No players active currently.*';
+        description = server.playersOnline > 0? server.players.map(player => `- ${player}`).join('\n') : '> No players active currently.';
     } else {
-        description = server.error? '*The current server status couldn\'t be retrieved.*' : '*The server is currently offline.*';
+        description = server.error? '> The current server status couldn\'t be retrieved.' : '> The server is currently offline.';
     }
     
 
@@ -20,6 +21,7 @@ async function handleActivePlayerList(interaction) {
             name: `${status} · Active Players 👥 · (${server.playersOnline}/${server.playersMax})`,
             value: description
         })
+        .setColor(colors.mc_server)
         .setTimestamp();
 
     return await interaction.editReply({

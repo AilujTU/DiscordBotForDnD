@@ -325,7 +325,7 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
             tallyData.lastRefresh = Date.now();
             console.log(`Refreshed tally board for ${channel.name}`); // TODO: delete if working corretly
         } catch (error) {
-            console.error(`Error refreshing tally board ${error}`);
+            console.error(`Error refreshing tally board: `, error);
         }
     }, REFRESH_INTERVAL);
 

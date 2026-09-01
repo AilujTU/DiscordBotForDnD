@@ -1,5 +1,5 @@
 const db = require('../db/knex');
-const { MessageFlags, AttachmentBuilder } = require('discord.js');
+const { MessageFlags, AttachmentBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
 const { buildMemberStatsCard, buildSpeechTallyCardForMember, buildSpeechTallyBoardCard, formatDuration } = require('./cardBuilder');
 
@@ -275,7 +275,11 @@ async function handleSpeechTrackerTally(interaction) {
     await interaction.deferReply({ content: 'Searching for the truth...' });
     const { attachment } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
 
+    const refresh = new ButtonBuilder().setCustomId('refreshBtnSpeechTally').setLabel('Refresh tally').setStyle(ButtonStyle.Primary);
+    const row = new ActionRowBuilder().addComponents(refresh);
+
     const msg = await interaction.editReply({
+        components: [row],
         files: [attachment]
     });
 
@@ -289,8 +293,18 @@ async function handleSpeechTrackerTally(interaction) {
     return msg;
 }
 
+async function refreshSpeechTallyMessage (msg, guild, channel, tracker) {
+    const {attachment} = await buildSpeechTallyBoard(guild, channel, tracker);
+
+    await msg.edit({
+        files: [attachment]
+    });
+
+    return msg;    
+}
+
 async function startAutoRefresh(msg, guild, channel, tracker) {
-    const REFRESH_INTERVAL = 30*60*1000; // 1 mins
+    const REFRESH_INTERVAL = 1*60*1000; // 1 mins TODO: change to 30mins
 
     tracker.tallyMessage.set(msg.id, {
         message: msg,
@@ -316,11 +330,7 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
                 return;
             }
 
-            const {attachment} = await buildSpeechTallyBoard(guild, channel, tracker);
-
-            await fetchedMsg.edit({
-                files: [attachment]
-            });
+            await refreshSpeechTallyMessage(fetchedMsg,guild,channel,tracker);
 
             tallyData.lastRefresh = Date.now();
             console.log(`Refreshed tally board for ${channel.name}`); // TODO: delete if working corretly
@@ -331,6 +341,10 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
 
     tracker.refreshTimers = tracker.refreshTimers || new Map();
     tracker.refreshTimers.set(msg.id, refreshTimer);
+}
+
+async function refreshButtonClicked(interaction) {
+    // implement
 }
 
 async function handleSpeechTrackerBreak(interaction) {
@@ -672,4 +686,5 @@ module.exports = {
     stopTracking,
     startTracking,
     restorePersistentTrackers,
+    refreshButtonClicked,
 };

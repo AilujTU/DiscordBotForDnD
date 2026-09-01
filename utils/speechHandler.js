@@ -76,6 +76,8 @@ async function startTracking(channel) {
         lastSessionPercentage: new Map(),
         lastTallyPosition: new Map(),
         lastTallyPercentage: new Map(),
+        tallyMessage: new Map(),
+        refreshTimers: new Map(),
     });
 
     const tracker = activeTrackers.get(channel.id);
@@ -228,6 +230,13 @@ async function stopTracking(channel) {
     if (!tracker)
         return;
 
+    if (tracker.refreshTimers) {
+        for (const [msgId, timer] of tracker.refreshTimers) {
+            clearInterval(timer);
+        }
+        tracker.refreshTimers.clear();
+    }
+
     await updateStatsInStorage(channel);
 
     tracker.connection.destroy();
@@ -266,14 +275,62 @@ async function handleSpeechTrackerTally(interaction) {
     await interaction.deferReply({ content: 'Searching for the truth...' });
     const { attachment } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
 
+    const msg = await interaction.editReply({
+        files: [attachment]
+    });
+
     if (isEnded) {
         finalizeTracker(tracker);
         await stopTracking(channel);
+    } else {
+        startAutoRefresh(msg, interaction.guild, channel, tracker);
     }
 
-    return await interaction.editReply({
-        files: [attachment]
+    return msg;
+}
+
+async function startAutoRefresh(msg, guild, channel, tracker) {
+    const REFRESH_INTERVAL = 30*60*1000; // 1 mins
+
+    tracker.tallyMessage.set(msg.id, {
+        message: msg,
+        guildId: guild.id,
+        channelId: channel.id,
+        lastRefresh: Date.now()
     });
+
+    const refreshTimer = setInterval(async () => {
+        try {
+            const tallyData = tracker.tallyMessage.get(msg.id);
+
+            if (!tallyData) {
+                clearInterval(refreshTimer);
+                return;
+            }
+
+            const fetchedMsg = await msg.channel.messages.fetch(msg.id).catch(() => null);
+
+            if (!fetchedMsg) {
+                tracker.tallyMessage.delete(msg.id);
+                clearInterval(refreshTimer);
+                return;
+            }
+
+            const {attachment} = await buildSpeechTallyBoard(guild, channel, tracker);
+
+            await fetchedMsg.edit({
+                files: [attachment]
+            });
+
+            tallyData.lastRefresh = Date.now();
+            console.log(`Refreshed tally board for ${channel.name}`); // TODO: delete if working corretly
+        } catch (error) {
+            console.error(`Error refreshing tally board ${error}`);
+        }
+    }, REFRESH_INTERVAL);
+
+    tracker.refreshTimers = tracker.refreshTimers || new Map();
+    tracker.refreshTimers.set(msg.id, refreshTimer);
 }
 
 async function handleSpeechTrackerBreak(interaction) {

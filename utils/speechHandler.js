@@ -298,9 +298,9 @@ async function refreshSpeechTallyMessage (msg, guild, channel, tracker) {
 
     await msg.edit({
         files: [attachment]
-    });
+    });  
 
-    return msg;    
+    return msg;
 }
 
 async function startAutoRefresh(msg, guild, channel, tracker) {
@@ -335,7 +335,7 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
             tallyData.lastRefresh = Date.now();
             console.log(`Refreshed tally board for ${channel.name}`); // TODO: delete if working corretly
         } catch (error) {
-            console.error(`Error refreshing tally board: `, error);
+            console.error('Error automatically refreshing tally board: ', error);
         }
     }, REFRESH_INTERVAL);
 
@@ -344,7 +344,41 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
 }
 
 async function refreshButtonClicked(interaction) {
-    // implement
+    const msgId = interaction.message.id;
+
+    let tracker;
+    let channel;
+
+    for (const activeTracker of activeTrackers.values()) {
+        const tallyData = activeTracker.tallyMessage?.get(msgId);
+        
+        if (tallyData) {
+            tracker = activeTracker;
+            channel = interaction.guild.channels.cache.get(tallyData.channelId);
+            break;
+        }
+    }
+
+    if (!tracker || !channel) {
+        return interaction.reply({
+            content: 'This speech tally is no longer active.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    try {
+        await interaction.deferUpdate();
+
+        await refreshSpeechTallyMessage(interaction.message,interaction.guild,channel,tracker);
+
+        const tallyData = tracker.tallyMessage.get(msgId);
+
+        if (tallyData) {
+            tallyData.lastRefresh = Date.now();
+        }
+    } catch (error) {
+        console.error('Error manually refreshing speech tally: ', error);
+    }
 }
 
 async function handleSpeechTrackerBreak(interaction) {

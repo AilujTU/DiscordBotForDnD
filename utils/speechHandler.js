@@ -325,7 +325,7 @@ async function refreshSpeechTallyMessage(msg, guild, channel, tracker) {
 }
 
 async function startAutoRefresh(msg, guild, channel, tracker) {
-    const REFRESH_INTERVAL = 1 * 60 * 1000; // 1 mins TODO: change to 30mins
+    const REFRESH_INTERVAL = 30 * 60 * 1000; // 30mins
 
     tracker.tallyMessage = {
         message: msg,
@@ -357,7 +357,6 @@ async function startAutoRefresh(msg, guild, channel, tracker) {
             await refreshSpeechTallyMessage(fetchedMsg, guild, channel, tracker);
             tracker.tallyMessage.lastRefresh = Date.now();
 
-            console.log(`Refreshed tally board for ${channel.name}`); // TODO: delete if working corretly
         } catch (error) {
             console.error('Error automatically refreshing tally board: ', error);
         }
@@ -501,13 +500,9 @@ async function updateStatsInStorage(channel) {
     const stats = getStatsSnapshot(tracker);
     const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
-    console.log(`sortedStats: ${sortedStats}`);
     const totalTalkTime = [...stats.values()]
         .reduce((a, b) => a + b, 0);
-    console.log(`total talk time: ${totalTalkTime}`);
     const month = new Date(tracker.startedAt).getMonth() + 1;
-    console.log(`Month: ${month}`);
-    console.log('reached updateStatsInStorage, right before loop');
 
     // find last session_id
     const latest = await db('sessionData').max('session_id as session_id').first();
@@ -516,11 +511,8 @@ async function updateStatsInStorage(channel) {
     // iterate over all members that have stats
     for (const [i, [memberId, talkTime]] of sortedStats.entries()) {
         // update table trackedMember
-        console.log(`Talk time: ${talkTime}`);
         const percentage = totalSessionTime > 0 ? Number(((talkTime / totalTalkTime) * 100).toFixed(1)) : 0;
 
-
-        console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
         await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime, i + 1);
 
         const trackedMember = await db('trackedMember')

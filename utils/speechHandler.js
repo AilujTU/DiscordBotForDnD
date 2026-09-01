@@ -1,5 +1,5 @@
 const db = require('../db/knex');
-const { MessageFlags, AttachmentBuilder } = require('discord.js');
+const { MessageFlags, AttachmentBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
 const { buildMemberStatsCard, buildSpeechTallyCardForMember, buildSpeechTallyBoardCard, formatDuration } = require('./cardBuilder');
 
@@ -76,6 +76,8 @@ async function startTracking(channel) {
         lastSessionPercentage: new Map(),
         lastTallyPosition: new Map(),
         lastTallyPercentage: new Map(),
+        tallyMessage: null,
+        refreshTimer: null,
     });
 
     const tracker = activeTrackers.get(channel.id);
@@ -228,6 +230,32 @@ async function stopTracking(channel) {
     if (!tracker)
         return;
 
+    if (tracker.refreshTimer) {
+        clearInterval(tracker.refreshTimer);
+        tracker.refreshTimer = null;
+    }
+
+    if (tracker.tallyMessage?.message) {
+        try {
+            const disabledButton = new ButtonBuilder()
+                .setCustomId('refreshBtnSpeechTally')
+                .setLabel('Refresh tally')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(true);
+
+            const row = new ActionRowBuilder().addComponents(disabledButton);
+
+            await tracker.tallyMessage.message.edit({
+                components: [row]
+            });
+
+        } catch (error) {
+            console.error('Last tally message couldn\'t be disabled: ', error)
+        }
+    }
+
+    tracker.tallyMessage = null;
+
     await updateStatsInStorage(channel);
 
     tracker.connection.destroy();
@@ -264,16 +292,142 @@ async function handleSpeechTrackerTally(interaction) {
     }
 
     await interaction.deferReply({ content: 'Searching for the truth...' });
+    await disablePreviousTallyMessage(tracker);
+
     const { attachment } = await buildSpeechTallyBoard(interaction.guild, channel, tracker, isEnded);
+
+    const refresh = new ButtonBuilder().setCustomId('refreshBtnSpeechTally').setLabel('Refresh tally').setStyle(ButtonStyle.Primary);
+    const row = new ActionRowBuilder().addComponents(refresh);
+
+    const msg = await interaction.editReply({
+        components: [row],
+        files: [attachment]
+    });
 
     if (isEnded) {
         finalizeTracker(tracker);
         await stopTracking(channel);
+    } else {
+        startAutoRefresh(msg, interaction.guild, channel, tracker);
     }
 
-    return await interaction.editReply({
+    return msg;
+}
+
+async function refreshSpeechTallyMessage(msg, guild, channel, tracker) {
+    const { attachment } = await buildSpeechTallyBoard(guild, channel, tracker);
+
+    await msg.edit({
         files: [attachment]
     });
+
+    return msg;
+}
+
+async function startAutoRefresh(msg, guild, channel, tracker) {
+    const REFRESH_INTERVAL = 30 * 60 * 1000; // 30mins
+
+    tracker.tallyMessage = {
+        message: msg,
+        guildId: guild.id,
+        channelId: channel.id,
+        lastRefresh: Date.now()
+    };
+
+    const refreshTimer = setInterval(async () => {
+        try {
+            if (!tracker.tallyMessage) {
+                clearInterval(refreshTimer);
+                return;
+            }
+
+            const fetchedMsg = await msg.channel.messages.fetch(msg.id).catch(() => null);
+
+            if (!fetchedMsg) {
+                clearInterval(refreshTimer);
+
+                if (tracker.tallyMessage?.message.id === msg.id) {
+                    tracker.tallyMessage = null;
+                    tracker.refreshTimer = null;
+                }
+
+                return;
+            }
+
+            await refreshSpeechTallyMessage(fetchedMsg, guild, channel, tracker);
+            tracker.tallyMessage.lastRefresh = Date.now();
+
+        } catch (error) {
+            console.error('Error automatically refreshing tally board: ', error);
+        }
+    }, REFRESH_INTERVAL);
+
+    tracker.refreshTimer = refreshTimer;
+}
+
+async function refreshButtonClicked(interaction) {
+    const msgId = interaction.message.id;
+
+    let tracker;
+    let channel;
+
+    for (const activeTracker of activeTrackers.values()) {
+        if (activeTracker.tallyMessage?.message.id === msgId) {
+            tracker = activeTracker;
+
+            channel = interaction.guild.channels.cache.get(activeTracker.tallyMessage.channelId);
+            break;
+        }
+    }
+
+    if (!tracker || !channel) {
+        return interaction.reply({
+            content: 'This speech tally is no longer active.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    try {
+        await interaction.deferUpdate();
+
+        await refreshSpeechTallyMessage(interaction.message, interaction.guild, channel, tracker);
+
+        if (tracker.tallyMessage?.message.id === msgId) {
+            tracker.tallyMessage.lastRefresh = Date.now();
+        }
+    } catch (error) {
+        console.error('Error manually refreshing speech tally: ', error);
+    }
+}
+
+async function disablePreviousTallyMessage(tracker) {
+    if (!tracker.tallyMessage)
+        return;
+
+    const prevMsg = tracker.tallyMessage.message;
+
+    try {
+        const disabledButton = new ButtonBuilder()
+            .setCustomId('refreshBtnSpeechTally')
+            .setLabel('Refresh tally')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true);
+
+        const row = new ActionRowBuilder().addComponents(disabledButton);
+
+        await prevMsg.edit({
+            components: [row]
+        });
+    } catch (error) {
+        console.error('Old tally message couldn\'t be disabled: ', error);
+    }
+
+    if (tracker.refreshTimer) {
+        clearInterval(tracker.refreshTimer);
+        tracker.refreshTimer = null;
+    }
+
+    tracker.tallyMessage = null;
 }
 
 async function handleSpeechTrackerBreak(interaction) {
@@ -346,26 +500,19 @@ async function updateStatsInStorage(channel) {
     const stats = getStatsSnapshot(tracker);
     const sortedStats = [...stats.entries()]
         .sort((a, b) => b[1] - a[1]);
-    console.log(`sortedStats: ${sortedStats}`);
     const totalTalkTime = [...stats.values()]
         .reduce((a, b) => a + b, 0);
-    console.log(`total talk time: ${totalTalkTime}`);
     const month = new Date(tracker.startedAt).getMonth() + 1;
-    console.log(`Month: ${month}`);
-    console.log('reached updateStatsInStorage, right before loop');
 
     // find last session_id
     const latest = await db('sessionData').max('session_id as session_id').first();
-    const nextSessionId = Number(latest?.session_id ?? 0) +1;
+    const nextSessionId = Number(latest?.session_id ?? 0) + 1;
 
     // iterate over all members that have stats
     for (const [i, [memberId, talkTime]] of sortedStats.entries()) {
         // update table trackedMember
-        console.log(`Talk time: ${talkTime}`);
         const percentage = totalSessionTime > 0 ? Number(((talkTime / totalTalkTime) * 100).toFixed(1)) : 0;
 
-
-        console.log(`Percentage of member with id: ${memberId} is ${percentage}%`);
         await updateTrackedMemberTable(guildId, channelId, memberId, percentage, talkTime, i + 1);
 
         const trackedMember = await db('trackedMember')
@@ -615,4 +762,5 @@ module.exports = {
     stopTracking,
     startTracking,
     restorePersistentTrackers,
+    refreshButtonClicked,
 };

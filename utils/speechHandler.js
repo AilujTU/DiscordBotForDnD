@@ -544,7 +544,7 @@ async function updateTrackedMemberTable(guildId, channelId, memberId, percentage
         .first();
 
     if (userEntryExists) {
-        const allTimePercent = (Number(userEntryExists.all_time_percentage ?? 0) * Number(userEntryExists.session_count ?? 0) + percentage) / (Number(userEntryExists.session_count ?? 0) + 1);
+        const allTimePercent = ((Number(userEntryExists.all_time_percentage ?? 0) * Number(userEntryExists.session_count ?? 0) + percentage) / (Number(userEntryExists.session_count ?? 0) + 1)).toFixed(1);
 
         await db('trackedMember')
             .where({ id: userEntryExists.id })
@@ -606,7 +606,7 @@ async function updateSpeechYearlyStats(id, month, percentage, session_count) {
         }).first();
 
     if (entryExists) {
-        const averagePercentage = (entryExists.percentage * session_count + percentage) / (session_count + 1);
+        const averagePercentage = ((entryExists.percentage * session_count + percentage) / (session_count + 1)).toFixed(1);
 
         await db('speechYearlyStat')
             .where({
@@ -654,10 +654,13 @@ async function handleMemberStats(interaction) {
             flags: MessageFlags.Ephemeral
         });
     }
-    await interaction.deferReply({ content: 'Searching for the truth...' });
+    await interaction.reply({ content: 'Searching for the truth...' });
     const attachment = await buildMemberStatsCard(await computeStatisticsForChannel(member, trackedMemberExists.id));
 
-    return await interaction.editReply({ files: [attachment] });
+    return await interaction.editReply({ 
+        content: '',
+        files: [attachment] 
+    });
 }
 
 async function computeStatisticsForChannel(member, id) {
@@ -690,7 +693,7 @@ async function computeStatisticsForChannel(member, id) {
         totalCount += Number(row.count);
     }
 
-    const averagePosition = totalCount > 0 ? totalWeightedPos / totalCount : 0;
+    const averagePosition = totalCount > 0 ? (totalWeightedPos / totalCount).toFixed(1) : 0;
 
     // format placement statistics
     let placements = [];

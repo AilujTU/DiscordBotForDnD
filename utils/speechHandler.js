@@ -693,7 +693,7 @@ async function computeStatisticsForChannel(member, id) {
         totalCount += Number(row.count);
     }
 
-    const averagePosition = totalCount > 0 ? (totalWeightedPos / totalCount).toFixed(1) : 0;
+    const averagePosition = totalCount > 0 ? totalWeightedPos / totalCount : 0;
 
     // format placement statistics
     let placements = [];

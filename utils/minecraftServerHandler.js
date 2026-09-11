@@ -5,15 +5,15 @@ const colors = require('./colors');
 async function handleActivePlayerList(interaction) {
     await interaction.deferReply()
     const server = await checkMinecraftServerStatus(interaction.client);
-    const status = server.online? '**Online** 🟢 ' : (server.error? '**Unavailable** ⚠️ ' : '**Offline** 🔴 ');
+    const status = server.online ? '**Online** 🟢 ' : (server.error ? '**Unavailable** ⚠️ ' : '**Offline** 🔴 ');
 
     let description = 'Something went wrong while looking up the active players.';
     if (server.online) {
-        description = server.playersOnline > 0? server.players.map(player => `- ${player}`).join('\n') : '> No players active currently.';
+        description = server.playersOnline > 0 ? server.players.map(player => `- ${player}`).join('\n') : '> No players active currently.';
     } else {
-        description = server.error? '> The current server status couldn\'t be retrieved.' : '> The server is currently offline.';
+        description = server.error ? '> The current server status couldn\'t be retrieved.' : '> The server is currently offline.';
     }
-    
+
 
     const embed = new EmbedBuilder()
         .setTitle('🎮 Minecraft Server')
@@ -26,16 +26,20 @@ async function handleActivePlayerList(interaction) {
 
     return await interaction.editReply({
         embeds: [embed]
-        }   
+    }
     );
 }
 
 async function checkMinecraftServerStatus() {
     if (!minecraftServerAdress) {
-        console.error('No minecraft server address defined')
-        return null;
+        console.error('No minecraft server address defined');
+        return {
+            online: false,
+            error: true
+        };
     }
-    
+
+    try {
     const response = await fetch('https://api.mcstatus.io/v2/status/java/'.concat(minecraftServerAdress));
 
     if (!response.ok) {
@@ -44,8 +48,8 @@ async function checkMinecraftServerStatus() {
         return {
             online: false,
             error: true
-        }
-    } 
+        };
+    }
 
     const data = await response.json();
 
@@ -61,7 +65,17 @@ async function checkMinecraftServerStatus() {
         playersMax: data.players.max,
         players: data.players.list.map(player => player.name_clean),
         version: data.version.name_clean
-    };    
+    };
+    } catch (error) {
+        console.error('Error checking Minecraft server: ', error);
+
+        return {
+            online: false,
+            error: true
+        };
+    }
+
+
 }
 
 let savedPresenceName = null;
@@ -71,10 +85,10 @@ async function updateMinecraftPresence(client) {
 
     let presenceName;
     if (!server.online) {
-        const symbol = server.error? "⚠️" : "🔴";
+        const symbol = server.error ? "⚠️" : "🔴";
         presenceName = `Minecraft Server ${symbol}`;
     } else {
-        const symbol = server.playersOnline === 0? "⚪" : "🟢";
+        const symbol = server.playersOnline === 0 ? "⚪" : "🟢";
         presenceName = `Minecraft Server ${symbol} (${server.playersOnline}/${server.playersMax})`;
     }
 
@@ -88,7 +102,7 @@ async function updateMinecraftPresence(client) {
                     type: 0
                 }
             ],
-            status: server.online? "online" : "idle"
+            status: server.online ? "online" : "idle"
         });
         savedPresenceName = presenceName;
     }

@@ -30,7 +30,7 @@ for (const folder of commandFolders) {
 		}
 	}
 }
-
+// harmless comment to check raspberry pi auto fetch from github TODO: delete in future development
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter((file) => file.endsWith('.js'));
 

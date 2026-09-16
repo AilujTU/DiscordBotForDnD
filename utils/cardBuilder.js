@@ -203,7 +203,7 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.fillText(`#${stats.position}`, leftColX, centerY);
 
     ctx.font = `bold 24px ${FONT_FAMILY}`;
-    drawDelta(ctx, stats.positionDelta, leftColX + 55, centerY + 9, false, 24);
+    drawDelta(ctx, stats.positionDelta, leftColX + 70, centerY + 9, false, 24);
 
     if (stats.avatar) {
 
@@ -234,7 +234,7 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.font = `bold 26px ${FONT_FAMILY}`;
     ctx.fillText(`${Number(stats.percentage ?? 0).toFixed(1)}%`, metricsColX, centerY + 8);
 
-    drawDelta(ctx, stats.percentageDelta, metricsColX + 70, centerY + 9, true, 20);
+    drawDelta(ctx, stats.percentageDelta, metricsColX + 100, centerY + 9, true, 20);
 
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = `18px ${FONT_FAMILY}`;

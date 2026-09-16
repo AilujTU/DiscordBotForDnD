@@ -66,13 +66,13 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
         ? COLORS.positive
         : COLORS.negative;
 
-    const arrow = positive ? "▲△⬆↑↗" : "▼▽⬇↓↘";
+    const arrow = positive ? "↗" : "↘";
 
     const text = isPercent
         ? `${Math.abs(delta).toFixed(1)}%`
         : `${Math.abs(delta).toFixed(0)}`;
 
-    ctx.font = `bold ${font}px ${SYMBOL_FONT}`;
+    ctx.font = `bold ${font+2}px ${SYMBOL_FONT}`;
 
     const arrowWidth = ctx.measureText(arrow).width;
 

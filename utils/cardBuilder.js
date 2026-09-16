@@ -41,7 +41,7 @@ const chartRenderer = new ChartJSNodeCanvas({
 });
 
 function drawMetric(ctx, label, value, x, y) {
-    const FONT = 18;
+    const FONT = 16;
     ctx.fillStyle = COLORS.subtitle;
     ctx.font = `${FONT}px ${FONT_FAMILY}`;
     ctx.fillText(label, x, y + FONT);
@@ -69,6 +69,7 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
     const arrow = positive ? "↗▲" : "↘";
     const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
 
+    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
     ctx.fillText(`${arrow} ${text}`, x, y);
 }
 

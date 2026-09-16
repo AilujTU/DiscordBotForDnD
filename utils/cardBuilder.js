@@ -75,7 +75,7 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
 
     ctx.fillText(arrow,x,y);
 
-    ctx.font = `bold ${FONT}px ${FONT_FAMILY}`;
+    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
 
     ctx.fillText(
         `${text}`,

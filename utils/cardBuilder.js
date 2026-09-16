@@ -13,8 +13,8 @@ GlobalFonts.registerFromPath(
     'Agency FB'
 )
 
-const FONT_FAMILY = '"Agency FB", sans-serif';
-const SYMBOL_FONT = '"Segoe UI Symbol", "Noto Sans Symbols", sans-serif';
+const FONT_FAMILY = "Agency FB";
+const SYMBOL_FONT = "Noto Sans Symbols";
 
 const WIDTH = 1200;
 const HEIGHT = 750;

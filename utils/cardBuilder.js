@@ -1,10 +1,20 @@
 const path = require('node:path');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const { AttachmentBuilder, Colors } = require('discord.js');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
+GlobalFonts.registerFromPath(
+    '/usr/local/share/fonts/agency-fb/AgencyFB.ttf',
+    'Agency FB'
+);
+
+GlobalFonts.registerFromPath(
+    '/usr/local/share/fonts/agency-fb/AgencyFBBold.ttf',
+    'Agency FB'
+)
+
 const FONT_FAMILY = '"Agency FB", sans-serif';
-const SYMBOL_FONT = '"Noto Sans Symbols", sans-serif';
+const SYMBOL_FONT = '"Segoe UI Symbol", "Noto Sans Symbols", sans-serif';
 
 const WIDTH = 1200;
 const HEIGHT = 750;
@@ -71,7 +81,7 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
 
     ctx.font = `bold ${font}px ${SYMBOL_FONT}`;
 
-    const arrowWidth = ctx.measureText(arrow).width;
+    const arrowWidth = ctx.measureText(arrow).width+5;
 
     ctx.fillText(arrow,x,y);
 

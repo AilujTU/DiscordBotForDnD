@@ -6,7 +6,7 @@
   "scripts": {
     "migrate": "node db/migrate.js",
     "deploy": "node deploy-commands.js",
-    "start": "node index.js",
+    "start": "node db/migrate.js && node deploy-commands.js && node index.js",
     "dev": "node db/migrate.js && node deploy-commands.js && nodemon index.js"
   },
   "repository": {

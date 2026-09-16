@@ -3,6 +3,9 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const { AttachmentBuilder, Colors } = require('discord.js');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
+const FONT_FAMILY = '"Noto Sans"';
+const SYMBOL_FONT = '"Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans"';
+
 const WIDTH = 1200;
 const HEIGHT = 750;
 const SPACING = 25;
@@ -40,18 +43,18 @@ const chartRenderer = new ChartJSNodeCanvas({
 function drawMetric(ctx, label, value, x, y) {
     const FONT = 18;
     ctx.fillStyle = COLORS.subtitle;
-    ctx.font = `${FONT}px sans-serif`;
+    ctx.font = `${FONT}px ${FONT_FAMILY}`;
     ctx.fillText(label, x, y + FONT);
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = `bold 26px ${FONT_FAMILY}`;
     ctx.fillText(value, x, y + FONT + 34);
 }
 
 function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
     if (Math.abs(delta) < 0.05) {
         ctx.fillStyle = "#A8A8A8";
-        ctx.font = `${font}px sans-serif`;
+        ctx.font = `${font}px ${FONT_FAMILY}`;
         const format = isPercent ? "±0.0%" : "±0";
         ctx.fillText(format, x, y);
         return;
@@ -63,16 +66,31 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
         ? COLORS.positive
         : COLORS.negative;
 
-    ctx.font = `bold ${font}px "Segoe UI Symbol", "Noto Sans Symbols", sans-serif`;
+    const arrow = positive ? "↗" : "↘";
 
-    const arrow = positive ? "▲" : "▼";
-    const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
+    const text = isPercent
+        ? `${Math.abs(delta).toFixed(1)}%`
+        : `${Math.abs(delta).toFixed(0)}`;
+
+    ctx.font = `bold ${font+2}px ${SYMBOL_FONT}`;
+
+    const arrowWidth = ctx.measureText(arrow).width;
+
+    ctx.fillText(arrow, x, y);
+
+    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
 
     ctx.fillText(
-        `${arrow} ${text}`,
-        x,
+        ` ${text}`,
+        x + arrowWidth,
         y
     );
+
+    /*const arrow = positive ? "↑" : "↓";
+    const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
+
+    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
+    ctx.fillText(`${arrow} ${text}`, x, y);*/
 }
 
 function drawCard(ctx, x, y, w, h, isFirst = false) {
@@ -132,7 +150,7 @@ function drawPositionDistribution(ctx, placements, x, given_y) {
 
         ctx.fillStyle = COLORS.subtitle;
 
-        ctx.font = "18px sans-serif";
+        ctx.font = `18px ${FONT_FAMILY}`;
 
         ctx.fillText(`#${p.position}`, x, y);
 
@@ -181,10 +199,10 @@ async function buildSpeechTallyCardForMember(stats) {
     ctx.textBaseline = "middle";
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 48px sans-serif";
+    ctx.font = `bold 48px ${FONT_FAMILY}`;
     ctx.fillText(`#${stats.position}`, leftColX, centerY);
 
-    ctx.font = "bold 24px sans-serif";
+    ctx.font = `bold 24px ${FONT_FAMILY}`;
     drawDelta(ctx, stats.positionDelta, leftColX + 55, centerY + 9, false, 24);
 
     if (stats.avatar) {
@@ -203,27 +221,27 @@ async function buildSpeechTallyCardForMember(stats) {
 
         ctx.textAlign = "center";
         ctx.fillStyle = COLORS.title;
-        ctx.font = "bold 20px sans-serif";
+        ctx.font = `bold 20px ${FONT_FAMILY}`;
         ctx.fillText(stats.username || "User", avatarColX + 40, centerY + 60);
         ctx.textAlign = "left";
     }
 
     ctx.fillStyle = COLORS.subtitle;
-    ctx.font = "18px sans-serif";
+    ctx.font = `18px ${FONT_FAMILY}`;
     ctx.fillText("Participation", metricsColX, centerY - 20);
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = `bold 26px ${FONT_FAMILY}`;
     ctx.fillText(`${Number(stats.percentage ?? 0).toFixed(1)}%`, metricsColX, centerY + 8);
 
     drawDelta(ctx, stats.percentageDelta, metricsColX + 70, centerY + 9, true, 20);
 
     ctx.fillStyle = COLORS.subtitle;
-    ctx.font = "18px sans-serif";
+    ctx.font = `18px ${FONT_FAMILY}`;
     ctx.fillText("Time Spoken", metricsColX + 235, centerY - 20);
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = `bold 26px ${FONT_FAMILY}`;
     ctx.fillText(formatDuration(Number(stats.timeSpoken ?? 0)), metricsColX + 235, centerY + 8);
 
     ctx.textBaseline = "alphabetic";
@@ -248,17 +266,17 @@ async function buildSpeechTallyBoardCard({ title, channelName, sessionLength, ca
     drawCard(ctx, 0, 0, canvasWidth, canvasHeight);
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 36px sans-serif";
+    ctx.font = `bold 36px ${FONT_FAMILY}`;
     ctx.fillText(title, padding, 44);
 
     ctx.fillStyle = COLORS.subtitle;
-    ctx.font = "20px sans-serif";
+    ctx.font = `20px ${FONT_FAMILY}`;
     ctx.fillText(`Channel: ${channelName}`, padding, 84);
     ctx.fillText(`Session Length: ${sessionLength}`, padding, 114);
 
     if (cards.length === 0) {
         ctx.fillStyle = COLORS.title;
-        ctx.font = "bold 24px sans-serif";
+        ctx.font = `bold 24px ${FONT_FAMILY}`;
         ctx.fillText("No speaking activity recorded.", padding, headerHeight + 40);
         return canvas.encode("png");
     }
@@ -304,7 +322,7 @@ async function buildMemberStatsCard(stats) {
     drawCard(ctx, distribution.x, distribution.y, distribution.w, distribution.h);
 
     ctx.fillStyle = COLORS.title;
-    ctx.font = "bold 42px sans-serif";
+    ctx.font = `bold 42px ${FONT_FAMILY}`;
     ctx.fillText(`Voice Statistics of ${stats.username}`, 2 * SPACING, 3 * SPACING);
 
     if (stats.avatar) {
@@ -329,7 +347,7 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.sessionDelta,
-        metrics.x + SPACING + 75,
+        metrics.x + SPACING + 80,
         metrics.y + SPACING + 52,
         true
     );
@@ -341,7 +359,7 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.positionDelta,
-        metrics.x + SPACING + 75,
+        metrics.x + SPACING + 80,
         metrics.y + SPACING + 100 + 52,
         false
     );
@@ -370,7 +388,7 @@ async function buildMemberStatsCard(stats) {
         metrics.y + SPACING + 500
     );
 
-    ctx.font = "bold 24px sans-serif";
+    ctx.font = `bold 24px ${FONT_FAMILY}`;
 
     ctx.fillStyle = COLORS.title;
 
@@ -396,7 +414,7 @@ async function buildParticipationChart(input = []) {
         const placeholderCtx = placeholderCanvas.getContext('2d');
 
         placeholderCtx.fillStyle = COLORS.title;
-        placeholderCtx.font = 'bold 28px sans-serif';
+        placeholderCtx.font = `bold 28px ${FONT_FAMILY}`;
         placeholderCtx.textAlign = 'center';
         placeholderCtx.textBaseline = 'middle';
         placeholderCtx.fillText('No session data recorded yet', 400, 150);
@@ -442,7 +460,7 @@ async function buildParticipationChart(input = []) {
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: {display: false},
+                    ticks: { display: false },
                     offset: false
                 },
                 y: {

@@ -66,11 +66,36 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
         ? COLORS.positive
         : COLORS.negative;
 
-    const arrow = positive ? "↑" : "↓";
+    ctx.beginPath();
+
+    if (positive) {
+        // ▲
+        ctx.moveTo(x, y - 8);
+        ctx.lineTo(x - 6, y + 4);
+        ctx.lineTo(x + 6, y + 4);
+    } else {
+        // ▼
+        ctx.moveTo(x, y + 4);
+        ctx.lineTo(x - 6, y - 8);
+        ctx.lineTo(x + 6, y - 8);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
+
+    const text = isPercent
+        ? `${Math.abs(delta).toFixed(1)}%`
+        : `${Math.abs(delta).toFixed(0)}`;
+
+    ctx.fillText(text, x + 12, y);
+
+    /*const arrow = positive ? "↑" : "↓";
     const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
 
     ctx.font = `bold ${font}px ${FONT_FAMILY}`;
-    ctx.fillText(`${arrow} ${text}`, x, y);
+    ctx.fillText(`${arrow} ${text}`, x, y);*/
 }
 
 function drawCard(ctx, x, y, w, h, isFirst = false) {

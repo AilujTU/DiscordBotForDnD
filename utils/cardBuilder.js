@@ -66,22 +66,10 @@ function drawDelta(ctx, delta, x, y, isPercent, font = 18) {
         ? COLORS.positive
         : COLORS.negative;
 
-    const arrow = positive ? "↗" : "↘";
+    const arrow = positive ? "↗▲" : "↘";
     const text = isPercent ? `${Math.abs(delta).toFixed(1)}%` : `${Math.abs(delta).toFixed(0)}`;
 
-    ctx.font = `bold ${font}px ${SYMBOL_FONT}`;
-
-    const arrowWidth = ctx.measureText(arrow).width+5;
-
-    ctx.fillText(arrow,x,y);
-
-    ctx.font = `bold ${font}px ${FONT_FAMILY}`;
-
-    ctx.fillText(
-        `${text}`,
-        x+arrowWidth,
-        y
-    );
+    ctx.fillText(`${arrow} ${text}`, x, y);
 }
 
 function drawCard(ctx, x, y, w, h, isFirst = false) {

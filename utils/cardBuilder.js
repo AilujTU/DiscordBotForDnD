@@ -1,20 +1,10 @@
 const path = require('node:path');
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const { AttachmentBuilder, Colors } = require('discord.js');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
-GlobalFonts.registerFromPath(
-    '/usr/local/share/fonts/agency-fb/AgencyFB.ttf',
-    'Agency FB'
-);
-
-GlobalFonts.registerFromPath(
-    '/usr/local/share/fonts/agency-fb/AgencyFBBold.ttf',
-    'Agency FB'
-)
-
-const FONT_FAMILY = "Agency FB";
-const SYMBOL_FONT = "Noto Sans Symbols";
+const FONT_FAMILY = '"Noto Sans"';
+const SYMBOL_FONT = '"Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans"';
 
 const WIDTH = 1200;
 const HEIGHT = 750;

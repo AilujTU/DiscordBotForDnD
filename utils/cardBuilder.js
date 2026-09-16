@@ -338,7 +338,7 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.sessionDelta,
-        metrics.x + SPACING + 75,
+        metrics.x + SPACING + 80,
         metrics.y + SPACING + 52,
         true
     );
@@ -350,7 +350,7 @@ async function buildMemberStatsCard(stats) {
     );
 
     drawDelta(ctx, stats.positionDelta,
-        metrics.x + SPACING + 75,
+        metrics.x + SPACING + 80,
         metrics.y + SPACING + 100 + 52,
         false
     );
